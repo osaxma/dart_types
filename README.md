@@ -1,6 +1,6 @@
 # Dart Types
 
-A package that is able to construct and present the type lattice of a given dart type
+A package to construct and present the type lattice of a given dart type.
 
 ### Features:
 - Produce a mermaid graph of the type lattice 

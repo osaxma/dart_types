@@ -15,8 +15,7 @@ class Lattice {
       throw UnimplementedError('Only FunctionType is supported at the moment');
     }
 
-    types ??= typeAnalyzer.collectTypesFromFunctionType(type as FunctionType)
-      ..removeWhere((element) => element.toString().contains('Comparable'));
+    types ??= typeAnalyzer.collectTypesFromFunctionType(type as FunctionType);
 
     typeAnalyzer.sortTypes(types);
     // TODO: Combine the matrix generation step with the transitive reduction step
