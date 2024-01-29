@@ -76,4 +76,4 @@ A package to construct and present the type lattice of a given dart type.
 
     > <sup>1</sup> _`Comparable` type was removed from the graph above to simplify it_
 
-    See [examples](/examples/) folder for more. 
+    See [example](/examples/) folder for more. 
