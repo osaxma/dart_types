@@ -1,10 +1,10 @@
-// gracias a lrhn: https://stackoverflow.com/a/68816742/10976714
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/file_system/overlay_file_system.dart';
 import 'package:analyzer/file_system/physical_file_system.dart';
 
+// gracias a @lrhn: https://stackoverflow.com/a/68816742/10976714
 Iterable<List<T>> allCombinations<T>(List<List<T>> sources) sync* {
   if (sources.isEmpty || sources.any((l) => l.isEmpty)) {
     yield [];
@@ -28,16 +28,17 @@ Iterable<List<T>> allCombinations<T>(List<List<T>> sources) sync* {
   }
 }
 
-// https://en.wikipedia.org/wiki/Transitive_reduction
-// algorithm:
+/// Return the [transitive reduction][] of [graph]
+///
+/// [transitive reduction]:https://en.wikipedia.org/wiki/Transitive_reduction
+// note: this was copied from `package:collection` (transitiveClosure) and one line was modified for reduction
+//       i.e. delete edges instead of adding them
+Map<T, Set<T>> transitiveReduction<T>(Map<T, Iterable<T>> graph) {
+// algorithm TLDR:
 // foreach x in graph.vertices
 //    foreach y in graph.vertices
 //       foreach z in graph.vertices
 //          delete edge xz if edges xy and yz exist
-//
-// note: this was copied from `package:collection` (transitiveClosure) and modified it for reduction
-//       i.e. instead of `add edge`, we `delete edge`
-Map<T, Set<T>> transitiveReduction<T>(Map<T, Iterable<T>> graph) {
   var result = <T, Set<T>>{};
   graph.forEach((vertex, edges) {
     result[vertex] = Set<T>.from(edges);

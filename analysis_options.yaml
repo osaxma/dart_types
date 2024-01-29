@@ -2,23 +2,11 @@ include: package:lints/recommended.yaml
 
 analyzer:
   errors:
-    ################# TODO: enable after heavy development is passed ####################
-    #                           they are annoying atm
-    unused_import: warning # TODO: Once we renable, unify import style (ie relative vs absolute, order, etc)
-    #####################################################################################
+    unused_import: warning
 
 linter:
   rules:
-    ################# TODO: enable useful ones after heavy development ####################
-    prefer_const_constructors: false # ok but not now
-    prefer_const_literals_to_create_immutables: false # ok but not now
-    prefer_const_declarations: false # ok but not now
-    avoid_print: false # ok but not now
-    sized_box_for_whitespace: false # ok but annoying in heavy dev
-
     prefer_conditional_assignment: false # annoying for no reason
     unnecessary_brace_in_string_interps: false # annoying for no reason
     prefer_interpolation_to_compose_strings: false # annoying for no reason
-
     avoid_function_literals_in_foreach_calls: false # i like forEach
-    #####################################################################################

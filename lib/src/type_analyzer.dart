@@ -24,12 +24,16 @@ class TypeAnalyzer {
   TypeSystem get typeSystem => libraryElement.typeSystem;
 
   List<ClassElement> getClasses() {
-    libraryElement.units.first.classes.toList();
     return libraryElement.units.first.classes;
   }
 
   List<DartType> getTypes() {
     final types = libraryElement.units.first.typeAliases.map((e) => e.aliasedType).toList();
+    return types;
+  }
+
+  List<FunctionType> getFunctionTypes() {
+    final types = getTypes().whereType<FunctionType>().toList();
     return types;
   }
 
@@ -45,7 +49,7 @@ class TypeAnalyzer {
     return libraryElement.typeSystem.isSubtypeOf(a, b);
   }
 
-  void sortType(List<DartType> types) {
+  void sortTypes(List<DartType> types) {
     types.sort((a, b) => a == b
         ? 0
         : isSubType(a, b)
@@ -76,8 +80,6 @@ class TypeAnalyzer {
     final types = <DartType>[];
     if (e is InterfaceElement) {
       types.addAll(e.allSupertypes);
-    } else if (e is FunctionType) {
-      // types.add(typeProvider.functionType);
     }
 
     types.add(typeProvider.objectQuestionType);
@@ -103,7 +105,7 @@ class TypeAnalyzer {
     final combination = allCombinations(parametersTypes);
 
     var allTypes = <DartType>[
-      typeProvider.objectQuestionType,
+      // typeProvider.objectQuestionType,
       typeProvider.objectType,
       typeProvider.functionType,
       typeProvider.neverType,

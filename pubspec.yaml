@@ -1,17 +1,14 @@
-name: dartypes
-description: A sample command-line application.
+name: dart_types
+description: A simple package for constructing type lattice and its presentation from Dart code
 version: 0.0.1
-# repository: https://github.com/my_org/my_repo
+repository: https://github.com/osaxma/dart_types
 
 environment:
   sdk: ^3.2.3
 
-# Add regular dependencies here.
 dependencies:
   analyzer: ^6.4.0
   collection: ^1.18.0
-  graphs: ^2.3.1
-  # path: ^1.8.0
 
 dev_dependencies:
   lints: ^2.1.0
