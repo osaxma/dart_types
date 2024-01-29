@@ -9,12 +9,14 @@ class Lattice {
   Lattice({
     required this.type,
     required TypeAnalyzer typeAnalyzer,
+    List<DartType>? types,
   }) {
     if (type is! FunctionType) {
       throw UnimplementedError('Only FunctionType is supported at the moment');
     }
 
-    final types = typeAnalyzer.collectTypesFromFunctionType(type as FunctionType);
+    types ??= typeAnalyzer.collectTypesFromFunctionType(type as FunctionType)
+      ..removeWhere((element) => element.toString().contains('Comparable'));
 
     typeAnalyzer.sortTypes(types);
     // TODO: Combine the matrix generation step with the transitive reduction step
@@ -63,26 +65,3 @@ class Lattice {
     return buff.toString();
   }
 }
-/* 
-
-graph TD
-    subgraph "Type hierarchy of int Function(int)"
-        O("Object") --> F
-        F("Function") --> ON
-        ON("Object? Function(Never)") --> IN
-        ON --> OI
-        IN("int Function(Never)") --> NN
-        IN --> II
-        OI("Object Function(int)") --> II
-        OI --> OO
-        NN("Never Function(Never)") --> NI
-        II("int Function(int)") --> NI
-        II --> IO
-        OO("Object? Function(Object?)") --> IO
-        NI("Never Function(int)") --> NO
-        IO("int Function(Object?)") --> NO
-        NO("Never Function(Object?)") --> N           
-        N("Never")
-    end
-
- */
