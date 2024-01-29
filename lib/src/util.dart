@@ -1,4 +1,10 @@
 // gracias a lrhn: https://stackoverflow.com/a/68816742/10976714
+import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
+import 'package:analyzer/dart/analysis/results.dart';
+import 'package:analyzer/dart/element/element.dart';
+import 'package:analyzer/file_system/overlay_file_system.dart';
+import 'package:analyzer/file_system/physical_file_system.dart';
+
 Iterable<List<T>> allCombinations<T>(List<List<T>> sources) sync* {
   if (sources.isEmpty || sources.any((l) => l.isEmpty)) {
     yield [];
@@ -22,6 +28,7 @@ Iterable<List<T>> allCombinations<T>(List<List<T>> sources) sync* {
   }
 }
 
+// https://en.wikipedia.org/wiki/Transitive_reduction
 // algorithm:
 // foreach x in graph.vertices
 //    foreach y in graph.vertices
@@ -48,4 +55,28 @@ Map<T, Set<T>> transitiveReduction<T>(Map<T, Iterable<T>> graph) {
   }
 
   return result;
+}
+
+// TODO: figure out how to use caching because this thing is slow
+//       at least cache the sdk
+Future<LibraryElement> getLibraryElementFromCodeString(String code) async {
+  // this can be anything since we are using an overlay resource provider
+  final filePath = '/code.dart';
+  final collection = AnalysisContextCollection(
+    includedPaths: [filePath],
+    resourceProvider: OverlayResourceProvider(
+      PhysicalResourceProvider(),
+    )..setOverlay(
+        filePath,
+        content: code,
+        modificationStamp: 0,
+      ),
+  );
+
+  final analysisSession = collection.contextFor(filePath).currentSession;
+
+  final libraryElement = await analysisSession
+      .getLibraryByUri('file://$filePath')
+      .then((libraryResult) => (libraryResult as LibraryElementResult).element);
+  return libraryElement;
 }

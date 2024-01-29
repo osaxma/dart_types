@@ -1,6 +1,6 @@
 import 'package:analyzer/dart/element/type.dart';
-import 'package:dartypes/lattice.dart';
-import 'package:dartypes/type_analyzer.dart';
+import 'package:dartypes/src/lattice.dart';
+import 'package:dartypes/src/type_analyzer.dart';
 
 final sample = '''
 typedef Func = int Function(int);
@@ -8,7 +8,7 @@ typedef Func = Object Function();
 ''';
 Future<void> main() async {
   print('loading code...');
-  final typeAnalyzer = await TypeAnalyzer.create(sample);
+  final typeAnalyzer = await TypeAnalyzer.fromCode(sample);
 
   final types = typeAnalyzer.getTypes();
   final typeA = types[1] as FunctionType;
