@@ -4,7 +4,8 @@ A package to construct and present the type lattice of a given dart type.
 
 ### Features:
 - Produce a mermaid graph of the type lattice 
-    - Currently only `FunctionType`s are supported (see example below)
+
+> Note: generics are not supported at the moment
 
 <!-- TODO: - Generate an HTML page with the mermaid graph  -->
 
@@ -74,3 +75,5 @@ A package to construct and present the type lattice of a given dart type.
     ```
 
     > <sup>1</sup> _`Comparable` type was removed from the graph above to simplify it_
+
+    See [examples](/examples/) folder for more. 

@@ -11,11 +11,13 @@ class Lattice {
     required TypeAnalyzer typeAnalyzer,
     List<DartType>? types,
   }) {
-    if (type is! FunctionType) {
-      throw UnimplementedError('Only FunctionType is supported at the moment');
+    if (type is FunctionType) {
+      types ??= typeAnalyzer.collectTypesFromFunctionType(type as FunctionType);
+    } else if (type is InterfaceType) {
+      types ??= typeAnalyzer.collectTypesFromInterfaceType(type as InterfaceType);
+    } else {
+      throw UnimplementedError('Only InterfaceType or FunctionType are supported but type: $type was given');
     }
-
-    types ??= typeAnalyzer.collectTypesFromFunctionType(type as FunctionType);
 
     typeAnalyzer.sortTypes(types);
     // TODO: Combine the matrix generation step with the transitive reduction step

@@ -23,6 +23,10 @@ class TypeAnalyzer {
   TypeProvider get typeProvider => libraryElement.typeProvider;
   TypeSystem get typeSystem => libraryElement.typeSystem;
 
+  ClassElement? getClass(String name) {
+    return libraryElement.getClass(name);
+  }
+
   List<ClassElement> getClasses() {
     return libraryElement.units.first.classes;
   }
@@ -125,5 +129,15 @@ class TypeAnalyzer {
     }
 
     return allTypes;
+  }
+
+  List<DartType> collectTypesFromInterfaceType(InterfaceType type) {
+    return <DartType>[
+      typeProvider.objectType,
+      ...getSubTypes(type),
+      type,
+      ...getSuperTypes(type),
+      typeProvider.neverType,
+    ];
   }
 }
