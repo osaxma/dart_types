@@ -13,7 +13,16 @@ import 'package:collection/collection.dart';
 import 'util.dart';
 
 class TypeAnalyzer {
-  TypeAnalyzer(this.libraryElement);
+  final LibraryElement _libraryElement;
+  late final List<ClassElement> classes;
+
+  TypeAnalyzer(this._libraryElement) {
+    classes = _libraryElement.units.first.classes //
+        // it messes up with least upper bound for some reason
+        // .map((c) => _ClassElementExtended._addSubtypes(c, _libraryElement))
+        // .toList() //
+        ;
+  }
 
   static Future<TypeAnalyzer> fromCode(String code) async {
     return TypeAnalyzer(await getLibraryElementFromCodeString(code));
@@ -23,26 +32,32 @@ class TypeAnalyzer {
     return TypeAnalyzer(await getLibraryElementFromFile(path));
   }
 
-  final LibraryElement libraryElement;
+  TypeProvider get typeProvider => _libraryElement.typeProvider;
 
-  TypeProvider get typeProvider => libraryElement.typeProvider;
-  TypeSystem get typeSystem => libraryElement.typeSystem;
+  TypeSystem get typeSystem => _libraryElement.typeSystem;
+
+  /// returns the least upper bound between [a] and [b]
+  DartType lub(DartType a, DartType b) => typeSystem.leastUpperBound(a, b);
+
+  /// returns the greatest lower bound between [a] and [b]
+  DartType glb(DartType a, DartType b) => typeSystem.greatestLowerBound(a, b);
 
   ClassElement? getClass(String name) {
-    return libraryElement.getClass(name);
-  }
-
-  List<ClassElement> getClasses() {
-    return libraryElement.units.first.classes;
+    for (final class_ in classes) {
+      if (class_.name == name) {
+        return class_;
+      }
+    }
+    return null;
   }
 
   List<DartType> getTypes() {
-    final types = libraryElement.units.first.typeAliases.map((e) => e.aliasedType).toList();
+    final types = _libraryElement.units.first.typeAliases.map((e) => e.aliasedType).toList();
     return types;
   }
 
   List<TypeAliasElement> getTypeAliasElements() {
-    return libraryElement.units.first.typeAliases;
+    return _libraryElement.units.first.typeAliases;
   }
 
   List<FunctionType> getFunctionTypes() {
@@ -52,7 +67,7 @@ class TypeAnalyzer {
 
   List<DartType> getAllTypes() {
     final allTypes = <DartType>[];
-    allTypes.addAll(getClasses().map((e) => e.thisType));
+    allTypes.addAll(classes.map((e) => e.thisType));
     allTypes.addAll(getTypes());
     return allTypes;
   }
@@ -76,7 +91,7 @@ class TypeAnalyzer {
 
   /// Return `true` if the [a] is a subtype of the [b].
   bool isSubType(DartType a, DartType b) {
-    return libraryElement.typeSystem.isSubtypeOf(a, b);
+    return _libraryElement.typeSystem.isSubtypeOf(a, b);
   }
 
   void sortTypes(List<DartType> types) {
@@ -165,5 +180,57 @@ class TypeAnalyzer {
       ...getSuperTypes(type),
       typeProvider.neverType,
     ];
+  }
+}
+
+class _ClassElementExtended extends ClassElementImpl {
+  final List<InterfaceType> knownSubtypes;
+  _ClassElementExtended(
+    super.name,
+    super.offset,
+    this.knownSubtypes,
+  );
+
+  @override
+  List<InterfaceType>? get allSubtypes {
+    if (isFinal || isSealed) return super.allSubtypes;
+    // there was an attempt here to make the greatest lower bound pick something other than Never
+    // but it seems that it doesn't loop through the subtypes anyway...
+    // see: getGreatestLowerBound in analyzer/lib/src/dart/element/greatest_lower_bound.dart
+    // Nevertheless, this type now shows in Lattice
+    return [...knownSubtypes];
+  }
+
+  // enrich the subtype information by adding known subtypes from this library to its supertype
+  static ClassElement _addSubtypes(ClassElement clazz, LibraryElement libraryElement) {
+    // for final and sealed classes, dart handles them automatically.
+    if (clazz.isFinal || clazz.isSealed) return clazz;
+    final newClazz = _ClassElementExtended(
+      clazz.name,
+      clazz.nameOffset,
+      libraryElement.units.first.classes
+          .where((c) => c != clazz)
+          .map((c) => c.thisType)
+          .where((t) => libraryElement.typeSystem.isSubtypeOf(t, clazz.thisType))
+          .toList(),
+    );
+    // copied from `analyzer//lib/src/summary2/element_builder.dart` visitClassDeclaration method
+    newClazz.enclosingElement = clazz.enclosingElement; // this is necessary
+    newClazz.supertype = clazz.supertype;
+    newClazz.constructors = clazz.constructors as dynamic;
+    newClazz.fields = clazz.fields as dynamic;
+    newClazz.isAbstract = clazz.isAbstract;
+    newClazz.isAugmentation = clazz.isAugmentation;
+    newClazz.augmentationTarget = clazz.augmentationTarget as dynamic;
+    newClazz.isBase = clazz.isBase;
+    newClazz.isFinal = clazz.isFinal;
+    newClazz.isInterface = clazz.isInterface;
+    newClazz.isMixinClass = clazz.isMixinClass;
+    newClazz.isAbstract = clazz.isAbstract;
+    newClazz.isSealed = clazz.isSealed;
+    newClazz.metadata = clazz.metadata;
+    newClazz.typeParameters = clazz.typeParameters;
+
+    return newClazz;
   }
 }

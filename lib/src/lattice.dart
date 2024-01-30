@@ -1,46 +1,33 @@
 import 'package:analyzer/dart/element/type.dart';
+import 'package:collection/collection.dart';
 import 'type_analyzer.dart';
 
 import 'util.dart';
 
 class Lattice {
   late final Map<DartType, Set<DartType> /* subtypes */ > graph;
-  final DartType type;
+
   Lattice({
-    required this.type,
+    required DartType type,
     required TypeAnalyzer typeAnalyzer,
     List<String> filter = const [],
   }) {
-    final List<DartType> types;
-    if (type is FunctionType) {
-      types = typeAnalyzer.collectTypesFromFunctionType(type as FunctionType);
-    } else if (type is InterfaceType) {
-      types = typeAnalyzer.collectTypesFromInterfaceType(type as InterfaceType);
-    } else {
-      throw UnimplementedError('Only InterfaceType or FunctionType are supported but type: $type was given');
-    }
-
-    if (filter.isNotEmpty) {
-      types.removeWhere((t) {
-        var typeName = t.getDisplayString(withNullability: false);
-        return filter.map((e) => RegExp('(?![^a-zA-Z0-9_])$e(?=[^a-zA-Z0-9_])')).any((f) => typeName.contains(f));
-      });
-    }
-
-    typeAnalyzer.sortTypes(types);
-    // TODO: Combine the matrix generation step with the transitive reduction step
-    final matrix = <DartType, List<DartType> /* subtypes */ >{};
-    for (var t in types) {
-      final edges = types.where((element) => element != t && typeAnalyzer.isSubType(element, t)).toList();
-      matrix[t] = edges;
-    }
-
+    final types = _collectTypes(type, typeAnalyzer, filter);
+    final matrix = _createTypeMatrix(types, typeAnalyzer);
     graph = transitiveReduction(matrix);
   }
 
-  Lattice merge(Lattice lattice) => throw UnimplementedError('TODO: implement merging two lattices');
+  Lattice.merged({
+    required List<DartType> selectedTypes,
+    required TypeAnalyzer typeAnalyzer,
+    List<String> filter = const [],
+  }) {
+    selectedTypes = selectedTypes.map((t) => _collectTypes(t, typeAnalyzer, filter)).flattened.toList();
+    final matrix = _createTypeMatrix(selectedTypes, typeAnalyzer);
+    graph = transitiveReduction(matrix);
+  }
 
-  String toMermaidGraph() {
+  String toMermaidGraph({List<DartType>? highlight}) {
     final buff = StringBuffer();
 
     final tags = <int>{};
@@ -68,9 +55,46 @@ class Lattice {
     }
 
     buff.write('\n\n');
-    final tag = type.getDisplayString(withNullability: true).hashCode;
-    buff.writeln('style $tag color:#7FFF7F');
+    if (highlight != null) {
+      for (var type in highlight) {
+        final tag = type.getDisplayString(withNullability: true).hashCode;
+        buff.writeln('style $tag color:#7FFF7F');
+      }
+    }
 
     return buff.toString();
+  }
+
+  static List<DartType> _collectTypes(DartType type, TypeAnalyzer typeAnalyzer, List<String> filter,
+      [bool sorted = true]) {
+    final List<DartType> types;
+    if (type is FunctionType) {
+      types = typeAnalyzer.collectTypesFromFunctionType(type);
+    } else if (type is InterfaceType) {
+      types = typeAnalyzer.collectTypesFromInterfaceType(type);
+    } else {
+      throw UnimplementedError('Only InterfaceType or FunctionType are supported but type: $type was given');
+    }
+    if (filter.isNotEmpty) {
+      types.removeWhere((t) {
+        var typeName = t.getDisplayString(withNullability: false);
+        // TODO: maybe we need to make the interpolated value as raw if it contains `$` or something else
+        return filter.map((e) => RegExp('(?![^a-zA-Z0-9_])$e(?=[^a-zA-Z0-9_])')).any((f) => typeName.contains(f));
+      });
+    }
+    if (sorted) {
+      typeAnalyzer.sortTypes(types);
+    }
+    return types;
+  }
+
+  static Map<DartType, List<DartType>> _createTypeMatrix(List<DartType> types, TypeAnalyzer typeAnalyzer) {
+    final matrix = <DartType, List<DartType> /* subtypes */ >{};
+    for (var t in types) {
+      final edges = types.where((element) => element != t && typeAnalyzer.isSubType(element, t)).toList();
+      matrix[t] = edges;
+    }
+
+    return matrix;
   }
 }

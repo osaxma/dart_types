@@ -123,7 +123,7 @@ Future<void> process({
 
     if (type != null) {
       final lattice = Lattice(type: type, typeAnalyzer: typeAnalyzer, filter: filter);
-      print(lattice.toMermaidGraph());
+      print(lattice.toMermaidGraph(highlight: [type]));
       return;
     }
     print('Error: selected type "$selectedType" does not exists.');
