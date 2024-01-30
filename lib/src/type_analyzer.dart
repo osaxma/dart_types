@@ -18,9 +18,10 @@ class TypeAnalyzer {
 
   TypeAnalyzer(this._libraryElement) {
     classes = _libraryElement.units.first.classes //
-        // it messes up with least upper bound for some reason
-        // .map((c) => _ClassElementExtended._addSubtypes(c, _libraryElement))
-        // .toList() //
+            // btw, this messes up with least upper bound in the `multiple` sample (it chooses Object instead of Top)
+            // the goal here is to enrich the Lattice by adding the known subtypes of each class in the given library
+            .map((c) => _ClassElementExtended._addSubtypes(c, _libraryElement))
+            .toList() //
         ;
   }
 
@@ -37,10 +38,10 @@ class TypeAnalyzer {
   TypeSystem get typeSystem => _libraryElement.typeSystem;
 
   /// returns the least upper bound between [a] and [b]
-  DartType lub(DartType a, DartType b) => typeSystem.leastUpperBound(a, b);
+  // DartType lub(DartType a, DartType b) => typeSystem.leastUpperBound(a, b); // inaccurate since we modify classes
 
   /// returns the greatest lower bound between [a] and [b]
-  DartType glb(DartType a, DartType b) => typeSystem.greatestLowerBound(a, b);
+  // DartType glb(DartType a, DartType b) => typeSystem.greatestLowerBound(a, b); // inaccurate since we modify classes
 
   ClassElement? getClass(String name) {
     for (final class_ in classes) {
