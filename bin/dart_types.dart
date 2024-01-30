@@ -8,7 +8,7 @@ void main(List<String> args) async {
   final parser = ArgParser();
 
   parser.addSeparator('Generate type lattice for a give dart type (only mermaid is supported atm)');
-
+  // TODO: split into commands: list, print, compare
   parser.addOption(
     'file',
     abbr: 'f',
@@ -24,17 +24,19 @@ void main(List<String> args) async {
     abbr: 't',
     help: 'Specify the type to be selected from the given <string> or <file>',
   );
-  // todo: list types
+
   parser.addFlag(
     'list',
     abbr: 'l',
     help: 'list all the types from the given <string> or <file>',
+    negatable: false,
   );
 
   parser.addFlag(
     'help',
     abbr: 'h',
-    help: 'prints usage',
+    help: 'prints this usage information',
+    negatable: false,
   );
 
   final result = parser.parse(args);
@@ -81,7 +83,9 @@ void printUsage(ArgParser parser) {
   final usage = parser.usage.split('\n');
   print(usage.first);
   print('');
-  print('Example: dart_types -f path/to/file.dart -c "MyClass"');
+  print('Example (from string): dart_types -s "class A{} class B extends A{} class C extends B{}" -t "C""');
+  print('Example   (from file): dart_types -f path/to/file.dart -c "MyClass"');
+  print('Example  (list types): dart_types -f path/to/file.dart --list');
   print('');
   print('Usage: dart_types [options]');
   usage.skip(1).map((e) => '  $e').forEach(print);

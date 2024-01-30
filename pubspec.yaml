@@ -3,6 +3,9 @@ description: A simple package for constructing type lattice and its presentation
 version: 0.0.1
 repository: https://github.com/osaxma/dart_types
 
+executables:
+  dart_types: dart_types
+
 environment:
   sdk: ^3.2.3
 
