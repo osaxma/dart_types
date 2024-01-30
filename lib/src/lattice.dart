@@ -23,6 +23,7 @@ class Lattice {
     List<String> filter = const [],
   }) {
     selectedTypes = selectedTypes.map((t) => _collectTypes(t, typeAnalyzer, filter)).flattened.toList();
+    typeAnalyzer.sortTypes(selectedTypes);
     final matrix = _createTypeMatrix(selectedTypes, typeAnalyzer);
     graph = transitiveReduction(matrix);
   }

@@ -18,15 +18,16 @@ Usage:
 ```
 Generate type lattice for a give dart type (only mermaid is supported atm)
 
-Example (from string): dart_types -s "class A{} class B extends A{} class C extends B{}" -t "C""
-Example   (from file): dart_types -f path/to/file.dart -c "MyClass"
-Example  (list types): dart_types -f path/to/file.dart --list
+Example (from string): dart_types -s "class A{} class B extends A{} class C extends B{}" -t "C"
+Example   (from path): dart_types -p path/to/file.dart -c "MyClass"
+Example  (list types): dart_types -p path/to/file.dart --list
 
 Usage: dart_types [options]
-  -f, --file      Specify the path of the file where the type(s) are (must provide this or `string`)
-  -s, --string    Provide a string containing the type(s) (must provide this or `file`)
-  -t, --type      Specify the type to be selected from the given <string> or <file>
-  -l, --list      list all the types from the given <string> or <file>
+  -p, --path      Specify the path of the file where the type(s) are (must provide this or `string`)
+  -s, --string    Provide a string containing the type(s) (must provide this or `path`)
+  -t, --type      Specify the type to be selected from the given <string> or <path> (can be used multiple times)
+  -f, --filter    Filter out types from the type lattice (can be used multiple times)
+  -l, --list      list all the types from the given <string> or <path>
   -h, --help      prints this usage information
 ```
 

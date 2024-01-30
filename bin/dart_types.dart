@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:analyzer/dart/element/type.dart';
 import 'package:args/args.dart';
 import 'package:collection/collection.dart';
 import 'package:dart_types/dart_types.dart';
@@ -20,15 +21,15 @@ void main(List<String> args) async {
     abbr: 's',
     help: 'Provide a string containing the type(s) (must provide this or `path`)',
   );
-  parser.addOption(
+  parser.addMultiOption(
     'type',
     abbr: 't',
-    help: 'Specify the type to be selected from the given <string> or <path>',
+    help: 'Specify the type to be selected from the given <string> or <path> (can be used multiple times)',
   );
   parser.addMultiOption(
     'filter',
     abbr: 'f',
-    help: 'Filter out types from the type lattice',
+    help: 'Filter out types from the type lattice (can be used multiple times)',
   );
   parser.addFlag(
     'list',
@@ -61,11 +62,12 @@ void main(List<String> args) async {
     print('');
     exit(1);
   }
-  final type = result['type'];
+  final types = result['type'] as List<String>;
   final list = result['list'];
 
-  if (type == null && !list) {
-    print('Error: either provide type to be analyzed or use `--list` the types of the provided `path` or `string`');
+  if (types.isEmpty && !list) {
+    print(
+        'Error: either provide type to be analyzed or use `--list` to see the types in the provided `path` or `string`');
     print('');
     printUsage(parser);
     print('');
@@ -75,7 +77,7 @@ void main(List<String> args) async {
   final filter = result['filter'] as List<String>;
 
   try {
-    await process(code: code, path: path, selectedType: type, filter: filter);
+    await process(code: code, path: path, selectedTypes: types, filter: filter);
   } catch (e, st) {
     print('something went wrong:');
     print(e);
@@ -99,7 +101,7 @@ void printUsage(ArgParser parser) {
 }
 
 Future<void> process({
-  String? selectedType,
+  required List<String> selectedTypes,
   String? path,
   String? code,
   List<String> filter = const [],
@@ -115,20 +117,32 @@ Future<void> process({
 
   final allTypes = typeAnalyzer.getAllTypes();
 
-  if (selectedType != null) {
-    // first, check a type alias was selected
-    var type = typeAnalyzer.getTypeAliasElements().firstWhereOrNull((e) => e.displayName == selectedType)?.aliasedType;
+  if (selectedTypes.isNotEmpty) {
+    final types = <DartType>[];
+    for (var selectedType in selectedTypes) {
+      // first, check a type alias was selected
+      var type =
+          typeAnalyzer.getTypeAliasElements().firstWhereOrNull((e) => e.displayName == selectedType)?.aliasedType;
 
-    type ??= allTypes.firstWhereOrNull((t) => t.getDisplayString(withNullability: true) == selectedType);
+      type ??= allTypes.firstWhereOrNull((t) => t.getDisplayString(withNullability: true) == selectedType);
 
-    if (type != null) {
-      final lattice = Lattice(type: type, typeAnalyzer: typeAnalyzer, filter: filter);
-      print(lattice.toMermaidGraph(highlight: [type]));
-      return;
+      if (type == null) {
+        print('Error: selected type "$type" does not exists.');
+        _printAvailableTypes(typeAnalyzer);
+        return;
+      }
+      types.add(type);
     }
-    print('Error: selected type "$selectedType" does not exists.');
-  }
 
+    final lattice = Lattice.merged(selectedTypes: types, typeAnalyzer: typeAnalyzer, filter: filter);
+    print(lattice.toMermaidGraph(highlight: types));
+    return;
+  } else {
+    _printAvailableTypes(typeAnalyzer);
+  }
+}
+
+void _printAvailableTypes(TypeAnalyzer typeAnalyzer) {
   // list all types
   print('The following are the available types:');
   print(typeAnalyzer.getAllTypesAsPrettyString(true));
