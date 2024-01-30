@@ -1,8 +1,11 @@
+import 'dart:io';
+
 import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/file_system/overlay_file_system.dart';
 import 'package:analyzer/file_system/physical_file_system.dart';
+import 'package:path/path.dart' as p;
 
 // gracias a @lrhn: https://stackoverflow.com/a/68816742/10976714
 Iterable<List<T>> allCombinations<T>(List<List<T>> sources) sync* {
@@ -80,4 +83,18 @@ Future<LibraryElement> getLibraryElementFromCodeString(String code) async {
       .getLibraryByUri('file://$filePath')
       .then((libraryResult) => (libraryResult as LibraryElementResult).element);
   return libraryElement;
+}
+
+Future<LibraryElement> getLibraryElementFromFile(String path) async {
+  path = p.absolute(path);
+
+  if (!File(path).existsSync()) {
+    throw Exception('File does not exists: $path');
+  }
+
+  final collection = AnalysisContextCollection(includedPaths: [path]);
+  final session = collection.contexts[0].currentSession;
+  final resolvedUnit = await session.getResolvedUnit(path) as ResolvedUnitResult;
+
+  return resolvedUnit.libraryElement;
 }

@@ -17,6 +17,9 @@ class TypeAnalyzer {
   static Future<TypeAnalyzer> fromCode(String code) async {
     return TypeAnalyzer(await getLibraryElementFromCodeString(code));
   }
+  static Future<TypeAnalyzer> fromFile(String path) async {
+    return TypeAnalyzer(await getLibraryElementFromFile(path));
+  }
 
   final LibraryElement libraryElement;
 
@@ -41,7 +44,7 @@ class TypeAnalyzer {
     return types;
   }
 
-  List<DartType> allTypes() {
+  List<DartType> getAllTypes() {
     final allTypes = <DartType>[];
     allTypes.addAll(getClasses().map((e) => e.thisType));
     allTypes.addAll(getTypes());

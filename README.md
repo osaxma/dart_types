@@ -7,7 +7,7 @@ A package to construct and present the type lattice of a given dart type.
 
 > Note: generics are not supported at the moment
 
-<!-- TODO: - Generate an HTML page with the mermaid graph  -->
+<!-- TODO: - add example and instruct how they can take it to `https://mermaid.live/` -->
 
 ### Example
 
