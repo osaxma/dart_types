@@ -1,6 +1,6 @@
 name: dart_types
-description: A simple package for constructing type lattice and its presentation from Dart code
-version: 0.0.1
+description: A simple cli/package for constructing type lattice and its presentation from Dart code
+version: 0.0.2
 repository: https://github.com/osaxma/dart_types
 
 executables:
