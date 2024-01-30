@@ -1,29 +1,44 @@
 # Dart Types
 
-A package to construct and present the type lattice of a given dart type.
+A cli/package to construct and present the type lattice of a given dart type.
 
 ### Features:
-- Produce a mermaid graph of the type lattice 
+- Generate the type lattice of given dart type(s) (only mermaid graph supported atm)
+- List all types within a file
 
-> Note: generics are not supported at the moment
+> Note: generics are ignored at the moment
 
-<!-- TODO: - add example and instruct how they can take it to `https://mermaid.live/` -->
-<!-- TODO: - add instruction to install `dart pub global activate dart_types` -->
+### Installation
+
+```
+dart pub global activate dart_types
+```
+
+Usage:
+```
+Generate type lattice for a give dart type (only mermaid is supported atm)
+
+Example (from string): dart_types -s "class A{} class B extends A{} class C extends B{}" -t "C""
+Example   (from file): dart_types -f path/to/file.dart -c "MyClass"
+Example  (list types): dart_types -f path/to/file.dart --list
+
+Usage: dart_types [options]
+  -f, --file      Specify the path of the file where the type(s) are (must provide this or `string`)
+  -s, --string    Provide a string containing the type(s) (must provide this or `file`)
+  -t, --type      Specify the type to be selected from the given <string> or <file>
+  -l, --list      list all the types from the given <string> or <file>
+  -h, --help      prints this usage information
+```
+
+> Notes: See the [example](/example/) folder for how to use this as a package
 
 ### Example
 
-- Running the following snippet:
-    ```dart
-    import 'package:dartypes/dartypes.dart';
-
-    Future<void> main() async {
-        final typeAnalyzer = await TypeAnalyzer.fromCode('typedef Func = int Function(int);');
-        final type = typeAnalyzer.getFunctionTypes().first;
-        final lattice = Lattice(type: type, typeAnalyzer: typeAnalyzer);
-        print(lattice.toMermaidGraph());
-    }
+- Running the following:
+    ```console
+     dart_types --string "typedef Func = int Function(int)" --type "Func" --filter "Comparable"
     ```
-- Produces the following mermaid graph<sup>1</sup>:
+- Produces the following mermaid graph:
 
     ```mermaid
     graph TD
@@ -75,6 +90,4 @@ A package to construct and present the type lattice of a given dart type.
     style 904175125 color:#7FFF7F
     ```
 
-    > <sup>1</sup> _`Comparable` type was removed from the graph above to simplify it_
-
-    See [example](/examples/) folder for more. 
+    > Note: to view the output, paste the graph at: https://mermaid.live 

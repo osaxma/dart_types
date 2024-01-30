@@ -19,7 +19,7 @@ class TypeAnalyzer {
     return TypeAnalyzer(await getLibraryElementFromCodeString(code));
   }
 
-  static Future<TypeAnalyzer> fromFile(String path) async {
+  static Future<TypeAnalyzer> fromPath(String path) async {
     return TypeAnalyzer(await getLibraryElementFromFile(path));
   }
 
@@ -39,6 +39,10 @@ class TypeAnalyzer {
   List<DartType> getTypes() {
     final types = libraryElement.units.first.typeAliases.map((e) => e.aliasedType).toList();
     return types;
+  }
+
+  List<TypeAliasElement> getTypeAliasElements() {
+    return libraryElement.units.first.typeAliases;
   }
 
   List<FunctionType> getFunctionTypes() {

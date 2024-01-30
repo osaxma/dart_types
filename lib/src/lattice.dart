@@ -9,14 +9,22 @@ class Lattice {
   Lattice({
     required this.type,
     required TypeAnalyzer typeAnalyzer,
-    List<DartType>? types,
+    List<String> filter = const [],
   }) {
+    final List<DartType> types;
     if (type is FunctionType) {
-      types ??= typeAnalyzer.collectTypesFromFunctionType(type as FunctionType);
+      types = typeAnalyzer.collectTypesFromFunctionType(type as FunctionType);
     } else if (type is InterfaceType) {
-      types ??= typeAnalyzer.collectTypesFromInterfaceType(type as InterfaceType);
+      types = typeAnalyzer.collectTypesFromInterfaceType(type as InterfaceType);
     } else {
       throw UnimplementedError('Only InterfaceType or FunctionType are supported but type: $type was given');
+    }
+
+    if (filter.isNotEmpty) {
+      types.removeWhere((t) {
+        var typeName = t.getDisplayString(withNullability: false);
+        return filter.map((e) => RegExp('(?![^a-zA-Z0-9_])$e(?=[^a-zA-Z0-9_])')).any((f) => typeName.contains(f));
+      });
     }
 
     typeAnalyzer.sortTypes(types);
