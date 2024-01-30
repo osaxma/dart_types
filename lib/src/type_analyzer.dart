@@ -8,6 +8,7 @@ import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/type_provider.dart';
 import 'package:analyzer/dart/element/type_system.dart';
+import 'package:collection/collection.dart';
 
 import 'util.dart';
 
@@ -17,6 +18,7 @@ class TypeAnalyzer {
   static Future<TypeAnalyzer> fromCode(String code) async {
     return TypeAnalyzer(await getLibraryElementFromCodeString(code));
   }
+
   static Future<TypeAnalyzer> fromFile(String path) async {
     return TypeAnalyzer(await getLibraryElementFromFile(path));
   }
@@ -49,6 +51,23 @@ class TypeAnalyzer {
     allTypes.addAll(getClasses().map((e) => e.thisType));
     allTypes.addAll(getTypes());
     return allTypes;
+  }
+
+  String getAllTypesAsPrettyString([bool grouped = false]) {
+    final allTypes = getAllTypes();
+    if (!grouped) {
+      return getAllTypes().map((e) => '- ${e.getDisplayString(withNullability: true)}\n').fold('', (p, n) => p + n);
+    }
+
+    final groups = groupBy(allTypes, (t) => t.runtimeType.toString().replaceAll('Impl', ''));
+    final buff = StringBuffer();
+    for (var entry in groups.entries) {
+      buff.writeln('${entry.key}:');
+      for (var t in entry.value) {
+        buff.writeln('  - $t');
+      }
+    }
+    return buff.toString();
   }
 
   /// Return `true` if the [a] is a subtype of the [b].

@@ -8,6 +8,7 @@ A package to construct and present the type lattice of a given dart type.
 > Note: generics are not supported at the moment
 
 <!-- TODO: - add example and instruct how they can take it to `https://mermaid.live/` -->
+<!-- TODO: - add instruction to install `dart pub global activate dart_types` -->
 
 ### Example
 
@@ -19,7 +20,7 @@ A package to construct and present the type lattice of a given dart type.
         final typeAnalyzer = await TypeAnalyzer.fromCode('typedef Func = int Function(int);');
         final type = typeAnalyzer.getFunctionTypes().first;
         final lattice = Lattice(type: type, typeAnalyzer: typeAnalyzer);
-        print(lattice.toMermaidGraphCode());
+        print(lattice.toMermaidGraph());
     }
     ```
 - Produces the following mermaid graph<sup>1</sup>:

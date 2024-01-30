@@ -32,7 +32,7 @@ class Lattice {
 
   Lattice merge(Lattice lattice) => throw UnimplementedError('TODO: implement merging two lattices');
 
-  String toMermaidGraphCode() {
+  String toMermaidGraph() {
     final buff = StringBuffer();
 
     final tags = <int>{};
@@ -59,7 +59,7 @@ class Lattice {
       }
     }
 
-    buff.write('\n\n\n');
+    buff.write('\n\n');
     final tag = type.getDisplayString(withNullability: true).hashCode;
     buff.writeln('style $tag color:#7FFF7F');
 

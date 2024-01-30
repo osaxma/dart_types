@@ -5,15 +5,6 @@ import 'package:collection/collection.dart';
 import 'package:dart_types/dart_types.dart';
 
 void main(List<String> args) async {
-  // TODO: dart_types  <file_path> [args]
-  //
-  //      generate a type lattice between for class:
-  //      e.g. dart_types /path/to/file.dart --class="SomeWidget"
-  //
-  //      generate a type lattice between two classes:
-  //      e.g. dart_types /path/to/file.dart --class="SomeWidget" --class="AnotherWidget"
-  //
-
   final parser = ArgParser();
 
   parser.addSeparator('Generate type lattice for a give dart type (only mermaid is supported atm)');
@@ -113,11 +104,11 @@ Future<void> process({
   final allTypes = typeAnalyzer.getAllTypes();
 
   if (selectedType != null) {
-    var type = allTypes.firstWhereOrNull((t) => t.getDisplayString(withNullability: true) == selectedType);
+    final type = allTypes.firstWhereOrNull((t) => t.getDisplayString(withNullability: true) == selectedType);
 
     if (type != null) {
       final lattice = Lattice(type: type, typeAnalyzer: typeAnalyzer);
-      print(lattice.toMermaidGraphCode());
+      print(lattice.toMermaidGraph());
       return;
     }
     print('Error: selected type "$selectedType" does not exists.');
@@ -125,7 +116,5 @@ Future<void> process({
 
   // list all types
   print('The following are the available types:');
-  typeAnalyzer.getAllTypes().forEach((element) {
-    print(' - ${element.getDisplayString(withNullability: true)}');
-  });
+  print(typeAnalyzer.getAllTypesAsPrettyString(true));
 }

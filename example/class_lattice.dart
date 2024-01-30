@@ -4,7 +4,7 @@ Future<void> main() async {
   final typeAnalyzer = await TypeAnalyzer.fromCode(clazz);
   final type = typeAnalyzer.getClass('UltimateOrganism')!.thisType;
   final lattice = Lattice(type: type, typeAnalyzer: typeAnalyzer);
-  print(lattice.toMermaidGraphCode());
+  print(lattice.toMermaidGraph());
 }
 
 // gracias a chatgpt
