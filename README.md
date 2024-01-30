@@ -36,7 +36,7 @@ Usage: dart_types [options]
 
 - Running the following:
     ```console
-     dart_types --string "typedef Func = int Function(int)" --type "Func" --filter "Comparable"
+    dart_types -s "typedef Func = int Function(int)" -t "Func" -f "Comparable"
     ```
 - Produces the following mermaid graph:
 
