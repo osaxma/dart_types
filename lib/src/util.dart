@@ -94,7 +94,7 @@ Future<LibraryElement> getLibraryElementFromFile(String path) async {
 
   final collection = AnalysisContextCollection(includedPaths: [path]);
   final session = collection.contexts[0].currentSession;
-  final resolvedUnit = await session.getResolvedUnit(path) as ResolvedUnitResult;
+  final resolvedUnit = await session.getResolvedLibrary(path) as ResolvedLibraryResult;
 
-  return resolvedUnit.libraryElement;
+  return resolvedUnit.element;
 }

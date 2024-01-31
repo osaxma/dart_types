@@ -16,13 +16,30 @@ class TypeAnalyzer {
   final LibraryElement _libraryElement;
   late final List<ClassElement> classes;
 
+  // TODO: support multiple libraries?
   TypeAnalyzer(this._libraryElement) {
-    classes = _libraryElement.units.first.classes //
-            // btw, this messes up with least upper bound in the `multiple` sample (it chooses Object instead of Top)
-            // the goal here is to enrich the Lattice by adding the known subtypes of each class in the given library
-            .map((c) => _ClassElementExtended._addSubtypes(c, _libraryElement))
-            .toList() //
-        ;
+    final collectedClasses = <ClassElement>[];
+    // collect declared class in the given library
+    collectedClasses.addAll(_libraryElement.units.first.classes);
+
+    // collect classes from imported libraries
+    for (var imports in _libraryElement.importedLibraries) {
+      collectedClasses.addAll(imports.units.first.classes);
+    }
+
+    // collect classes from exported libraries
+    for (var exports in _libraryElement.exportedLibraries) {
+      collectedClasses.addAll(exports.units.first.classes);
+    }
+
+    // The goal here is to enrich the Lattice by adding the known subtypes of each class in the given libraries
+    // to its superclass (e.g. add `StatelessWidget` to `Widget`). See `_ClassElementExtended` for more details
+    //
+    // Note:
+    //  - This messes up with least upper bound
+    //  - The added subtypes are ignored when computing the greatest lower bound
+    //    - the algorithm ignores subtypes (i believe it does even for sealed/final classes)
+    classes = collectedClasses.map((clazz) => _ClassElementExtended._addSubtypes(clazz, _libraryElement)).toList();
   }
 
   static Future<TypeAnalyzer> fromCode(String code) async {
