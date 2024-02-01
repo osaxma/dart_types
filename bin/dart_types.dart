@@ -14,34 +14,52 @@ void main(List<String> args) async {
   parser.addOption(
     'path',
     abbr: 'p',
-    help: 'Specify the path of the file where the type(s) are (must provide this or `string`)',
+    help: 'Specify the path of the file where the type(s) are (must provide this or `string`)\n'
+        '(can be used multiple times)',
   );
+
   parser.addOption(
     'string',
     abbr: 's',
-    help: 'Provide a string containing the type(s) (must provide this or `path`)',
+    help: 'Provide a string containing the type(s) (must provide this or `path`)\n'
+        '(can be used multiple times)\n',
   );
+
   parser.addMultiOption(
     'type',
     abbr: 't',
-    help: 'Specify the type to be selected from the given <string> or <path> (can be used multiple times)',
+    help: 'Specify the type to be selected from the given <string> or <path>\n'
+        '(can be used multiple times)\n',
   );
+
   parser.addMultiOption(
     'filter',
     abbr: 'f',
-    help: 'Filter out types from the type lattice (can be used multiple times)',
+    help: 'Filter out types from the type lattice\n'
+        '(can be used multiple times)\n',
   );
+
   parser.addFlag(
     'list',
     abbr: 'l',
-    help: 'list all the types from the given <string> or <path>',
+    help: 'list all the types from the given <string> or <path>\n',
     negatable: false,
+  );
+
+  // TODO: implement ignore private for both listing types and printing graph
+  parser.addFlag(
+    'ignore-private',
+    abbr: 'i',
+    help: 'ignore private declarations',
+    negatable: false,
+    // TODO: remove once implemented
+    hide: true,
   );
 
   parser.addFlag(
     'help',
     abbr: 'h',
-    help: 'prints this usage information',
+    help: 'prints this usage information\n',
     negatable: false,
   );
 
@@ -120,9 +138,8 @@ Future<void> process({
   if (selectedTypes.isNotEmpty) {
     final types = <DartType>[];
     for (var selectedType in selectedTypes) {
-      // first, check a type alias was selected
-      var type =
-          typeAnalyzer.getTypeAliasElements().firstWhereOrNull((e) => e.displayName == selectedType)?.aliasedType;
+      // first, check a type alias was selected by its name (displayName is only available at the alias element)
+      var type = typeAnalyzer.typeAliasElements.firstWhereOrNull((e) => e.displayName == selectedType)?.aliasedType;
 
       type ??= allTypes.firstWhereOrNull((t) => t.getDisplayString(withNullability: true) == selectedType);
 

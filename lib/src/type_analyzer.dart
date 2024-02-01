@@ -1,5 +1,6 @@
 // The following don't seem to be available on the public API so this is the only option for now
 // ignore_for_file: implementation_imports
+import 'package:analyzer/dart/element/type_system.dart';
 import 'package:analyzer/src/dart/element/type.dart';
 import 'package:analyzer/src/dart/element/element.dart';
 import 'package:analyzer/src/dart/element/extensions.dart';
@@ -7,39 +8,26 @@ import 'package:analyzer/src/dart/element/extensions.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/dart/element/type.dart';
 import 'package:analyzer/dart/element/type_provider.dart';
-import 'package:analyzer/dart/element/type_system.dart';
 import 'package:collection/collection.dart';
 
 import 'util.dart';
 
 class TypeAnalyzer {
-  final LibraryElement _libraryElement;
   late final List<ClassElement> classes;
+  late final List<TypeAliasElement> typeAliasElements;
+
+  // TODO: before, we only used a single library element. Now we have multiple -- would this be an issue?
+  //       I believe not because we use this to retrieve the types defined by the language
+  //       If this becomes an issue, we can access each typeProvider from ClassElement (eg clazz.library.typeProvider)
+  late final TypeProvider typeProvider;
+  late final TypeSystem typeSystem;
 
   // TODO: support multiple libraries?
-  TypeAnalyzer(this._libraryElement) {
-    final collectedClasses = <ClassElement>[];
-    // collect declared class in the given library
-    collectedClasses.addAll(_libraryElement.units.first.classes);
-
-    // collect classes from imported libraries
-    for (var imports in _libraryElement.importedLibraries) {
-      collectedClasses.addAll(imports.units.first.classes);
-    }
-
-    // collect classes from exported libraries
-    for (var exports in _libraryElement.exportedLibraries) {
-      collectedClasses.addAll(exports.units.first.classes);
-    }
-
-    // The goal here is to enrich the Lattice by adding the known subtypes of each class in the given libraries
-    // to its superclass (e.g. add `StatelessWidget` to `Widget`). See `_ClassElementExtended` for more details
-    //
-    // Note:
-    //  - This messes up with least upper bound
-    //  - The added subtypes are ignored when computing the greatest lower bound
-    //    - the algorithm ignores subtypes (i believe it does even for sealed/final classes)
-    classes = collectedClasses.map((clazz) => _ClassElementExtended._addSubtypes(clazz, _libraryElement)).toList();
+  TypeAnalyzer(LibraryElement libraryElement) {
+    typeSystem = libraryElement.typeSystem;
+    typeProvider = libraryElement.typeProvider;
+    classes = _collectClasses(libraryElement);
+    typeAliasElements = _collectTypeAliases(libraryElement);
   }
 
   static Future<TypeAnalyzer> fromCode(String code) async {
@@ -50,15 +38,9 @@ class TypeAnalyzer {
     return TypeAnalyzer(await getLibraryElementFromFile(path));
   }
 
-  TypeProvider get typeProvider => _libraryElement.typeProvider;
+  List<FunctionType> get functionTypes => typeAliases.whereType<FunctionType>().toList();
 
-  TypeSystem get typeSystem => _libraryElement.typeSystem;
-
-  /// returns the least upper bound between [a] and [b]
-  // DartType lub(DartType a, DartType b) => typeSystem.leastUpperBound(a, b); // inaccurate since we modify classes
-
-  /// returns the greatest lower bound between [a] and [b]
-  // DartType glb(DartType a, DartType b) => typeSystem.greatestLowerBound(a, b); // inaccurate since we modify classes
+  List<DartType> get typeAliases => typeAliasElements.map((e) => e.aliasedType).toList();
 
   ClassElement? getClass(String name) {
     for (final class_ in classes) {
@@ -69,24 +51,10 @@ class TypeAnalyzer {
     return null;
   }
 
-  List<DartType> getTypes() {
-    final types = _libraryElement.units.first.typeAliases.map((e) => e.aliasedType).toList();
-    return types;
-  }
-
-  List<TypeAliasElement> getTypeAliasElements() {
-    return _libraryElement.units.first.typeAliases;
-  }
-
-  List<FunctionType> getFunctionTypes() {
-    final types = getTypes().whereType<FunctionType>().toList();
-    return types;
-  }
-
   List<DartType> getAllTypes() {
     final allTypes = <DartType>[];
     allTypes.addAll(classes.map((e) => e.thisType));
-    allTypes.addAll(getTypes());
+    allTypes.addAll(typeAliasElements.map((e) => e.aliasedType));
     return allTypes;
   }
 
@@ -109,7 +77,7 @@ class TypeAnalyzer {
 
   /// Return `true` if the [a] is a subtype of the [b].
   bool isSubType(DartType a, DartType b) {
-    return _libraryElement.typeSystem.isSubtypeOf(a, b);
+    return typeSystem.isSubtypeOf(a, b);
   }
 
   void sortTypes(List<DartType> types) {
@@ -198,6 +166,50 @@ class TypeAnalyzer {
       ...getSuperTypes(type),
       typeProvider.neverType,
     ];
+  }
+
+  static List<ClassElement> _collectClasses(LibraryElement libraryElement) {
+    final collectedClasses = <ClassElement>[];
+    // collect declared class in the given library
+    collectedClasses.addAll(libraryElement.units.first.classes);
+
+    // collect classes from imported libraries
+    for (var imports in libraryElement.importedLibraries) {
+      collectedClasses.addAll(imports.units.first.classes);
+    }
+
+    // collect classes from exported libraries
+    for (var exports in libraryElement.exportedLibraries) {
+      collectedClasses.addAll(exports.units.first.classes);
+    }
+
+    // The goal here is to enrich the Lattice by adding the known subtypes of each class in the given libraries
+    // to its superclass (e.g. add `StatelessWidget` to `Widget`). See `_ClassElementExtended` for more details
+    //
+    // Note:
+    //  - This messes up with least upper bound
+    //  - The added subtypes are ignored when computing the greatest lower bound
+    //    - the algorithm ignores subtypes (i believe it does even for sealed/final classes)
+    return collectedClasses.map((clazz) => _ClassElementExtended._addSubtypes(clazz, libraryElement)).toList();
+  }
+
+  static List<TypeAliasElement> _collectTypeAliases(LibraryElement libraryElement) {
+    final typeAliases = <TypeAliasElement>[];
+    // collect from the given library
+
+    typeAliases.addAll(libraryElement.units.first.typeAliases);
+
+    // collect  from imported libraries
+    for (var imports in libraryElement.importedLibraries) {
+      typeAliases.addAll(imports.units.first.typeAliases);
+    }
+
+    // collect from exported libraries
+    for (var exports in libraryElement.exportedLibraries) {
+      typeAliases.addAll(exports.units.first.typeAliases);
+    }
+
+    return typeAliases;
   }
 }
 
