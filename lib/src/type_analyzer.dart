@@ -12,22 +12,53 @@ import 'package:collection/collection.dart';
 
 import 'util.dart';
 
+/// An Interface for the analyzer API specific to analyzing and processing types.
 class TypeAnalyzer {
   late final List<ClassElement> classes;
   late final List<TypeAliasElement> typeAliasElements;
 
   // TODO: before, we only used a single library element. Now we have multiple -- would this be an issue?
-  //       I believe not because we use this to retrieve the types defined by the language
-  //       If this becomes an issue, we can access each typeProvider from ClassElement (eg clazz.library.typeProvider)
-  late final TypeProvider typeProvider;
-  late final TypeSystem typeSystem;
+  //        - typeProvider used for obtaining some core types (should be same wouldn't it?)
+  //        - typeSystem used for checking subtypes
+  //
+  //       Maybe we should obtain both typeProvider and typeProvider through the element we are testing somehow
+  //       e.g. `ClassElement` has `ClassElement.library.typeProvider`
+  //       ... though but we cannot get there from DartType such as FunctionType where element is Null.
+  //        unless we operate on `TypeDefiningElement`s all the way instead of `DartType` as the former has `library`
+  //        as a member.
+  late final TypeProvider _typeProvider;
+  late final TypeSystem _typeSystem;
 
-  // TODO: support multiple libraries?
+  /// create a [TypeAnalyzer] for a single [LibraryElement]
   TypeAnalyzer(LibraryElement libraryElement) {
-    typeSystem = libraryElement.typeSystem;
-    typeProvider = libraryElement.typeProvider;
+    _typeSystem = libraryElement.typeSystem;
+    _typeProvider = libraryElement.typeProvider;
     classes = _collectClasses(libraryElement);
     typeAliasElements = _collectTypeAliases(libraryElement);
+  }
+
+  /// create a [TypeAnalyzer] for a multiple [LibraryElement]s
+  TypeAnalyzer.multiple(List<LibraryElement> libraryElements) {
+    if (libraryElements.isEmpty) {
+      throw Exception('TypeAnalyzer.multiple: No `LibraryElement`s were provided.');
+    }
+
+    // TODO: find out how we can merge the `typeSystem` and `typeProvider` for all libraries.
+    //       I believe it doesn't make a difference because we only use it for core types and finding if two
+    //       types are subtypes. 
+    _typeSystem = libraryElements.first.typeSystem;
+    _typeProvider = libraryElements.first.typeProvider;
+
+    for (var libraryElement in libraryElements) {
+      classes = _collectClasses(libraryElement);
+      typeAliasElements = _collectTypeAliases(libraryElement);
+    }
+  }
+
+  TypeAnalyzer.fromProject() {
+    // maybe in the CLI: check if the provided path is a directory, and if so, check if it's a flutter/dart project
+    //                   if so, collect all types from all files.
+    throw UnimplementedError('TODO: support collecting types from an entire project');
   }
 
   static Future<TypeAnalyzer> fromCode(String code) async {
@@ -58,34 +89,9 @@ class TypeAnalyzer {
     return allTypes;
   }
 
-  String getAllTypesAsPrettyString([bool grouped = false]) {
-    final allTypes = getAllTypes();
-    if (!grouped) {
-      return getAllTypes().map((e) => '- ${e.getDisplayString(withNullability: true)}\n').fold('', (p, n) => p + n);
-    }
-
-    final groups = groupBy(allTypes, (t) => t.runtimeType.toString().replaceAll('Impl', ''));
-    final buff = StringBuffer();
-    for (var entry in groups.entries) {
-      buff.writeln('${entry.key}:');
-      for (var t in entry.value) {
-        buff.writeln('  - $t');
-      }
-    }
-    return buff.toString();
-  }
-
   /// Return `true` if the [a] is a subtype of the [b].
   bool isSubType(DartType a, DartType b) {
-    return typeSystem.isSubtypeOf(a, b);
-  }
-
-  void sortTypes(List<DartType> types) {
-    types.sort((a, b) => a == b
-        ? 0
-        : isSubType(a, b)
-            ? 1
-            : -1);
+    return _typeSystem.isSubtypeOf(a, b);
   }
 
   List<DartType> getSubTypes(DartType type) {
@@ -95,7 +101,7 @@ class TypeAnalyzer {
       types.addAll(e.allSubtypes ?? []);
     }
 
-    types.add(typeProvider.neverType);
+    types.add(_typeProvider.neverType);
 
     return types;
   }
@@ -104,7 +110,8 @@ class TypeAnalyzer {
     final e = type.element;
 
     if (e is TypeAliasElement) {
-      // TODO: haven't tested this btw
+      // note: if `type` is FunctionType then element is `null` so it's safe to do this.
+      //       in most cases, we will just get an InterfaceElement
       return getSuperTypes(e.aliasedType);
     }
 
@@ -113,7 +120,7 @@ class TypeAnalyzer {
       types.addAll(e.allSupertypes);
     }
 
-    types.add(typeProvider.objectQuestionType);
+    types.add(_typeProvider.objectQuestionType);
 
     return types;
   }
@@ -137,15 +144,15 @@ class TypeAnalyzer {
 
     var allTypes = <DartType>[
       // typeProvider.objectQuestionType,
-      typeProvider.objectType,
-      typeProvider.functionType,
-      typeProvider.neverType,
+      _typeProvider.objectType,
+      _typeProvider.functionType,
+      _typeProvider.neverType,
     ];
     for (var r in returnTypes) {
       for (var p in combination) {
         for (var i = 0; i < p.length; i++) {
           final t = FunctionTypeImpl(
-            typeFormals: [], // TODO: handle type parameters and stuff -- i think?
+            typeFormals: [], // TODO: handle type parameters
             parameters: p,
             returnType: r,
             nullabilitySuffix: type.nullabilitySuffix,
@@ -160,12 +167,37 @@ class TypeAnalyzer {
 
   List<DartType> collectTypesFromInterfaceType(InterfaceType type) {
     return <DartType>[
-      typeProvider.objectType,
-      ...getSubTypes(type),
-      type,
+      _typeProvider.objectType,
       ...getSuperTypes(type),
-      typeProvider.neverType,
+      type,
+      ...getSubTypes(type),
+      _typeProvider.neverType,
     ];
+  }
+
+  String getAllTypesAsPrettyString([bool grouped = false]) {
+    final allTypes = getAllTypes();
+    if (!grouped) {
+      return getAllTypes().map((e) => '- ${e.getDisplayString(withNullability: true)}\n').fold('', (p, n) => p + n);
+    }
+
+    final groups = groupBy(allTypes, (t) => t.runtimeType.toString().replaceAll('Impl', ''));
+    final buff = StringBuffer();
+    for (var entry in groups.entries) {
+      buff.writeln('${entry.key}:');
+      for (var t in entry.value) {
+        buff.writeln('  - $t');
+      }
+    }
+    return buff.toString();
+  }
+
+  void sortTypes(List<DartType> types) {
+    types.sort((a, b) => a == b
+        ? 0
+        : isSubType(a, b)
+            ? 1
+            : -1);
   }
 
   static List<ClassElement> _collectClasses(LibraryElement libraryElement) {
@@ -224,10 +256,11 @@ class _ClassElementExtended extends ClassElementImpl {
   @override
   List<InterfaceType>? get allSubtypes {
     if (isFinal || isSealed) return super.allSubtypes;
-    // there was an attempt here to make the greatest lower bound pick something other than Never
-    // but it seems that it doesn't loop through the subtypes anyway...
-    // see: getGreatestLowerBound in analyzer/lib/src/dart/element/greatest_lower_bound.dart
-    // Nevertheless, this type now shows in Lattice
+    // There was an attempt here to make the greatest lower bound pick something other than Never
+    // but it looks like the algorithm ignores subtypes entirely (even for final and sealed)
+    //    see: getGreatestLowerBound in analyzer/lib/src/dart/element/greatest_lower_bound.dart
+    //
+    // Nevertheless, these subtypes can be shown in Lattice between `thisType` and `Never`.
     return [...knownSubtypes];
   }
 

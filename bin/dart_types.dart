@@ -5,12 +5,14 @@ import 'package:args/args.dart';
 import 'package:collection/collection.dart';
 import 'package:dart_types/dart_types.dart';
 
+// NOTE: Initially the program was designed to a single file and a single type, then multiple types,
+//       then multiple files, then an entire project... so there are redundancy that can be cleaned up.
 void main(List<String> args) async {
   final parser = ArgParser();
 
-  parser.addSeparator('Generate type lattice for a give dart type (only mermaid is supported atm)');
   // TODO: split into commands: list, print, compare
   // TODO: add ability to filter certain types out of the lattice (e.g. Comparable)
+  parser.addSeparator('Generate type lattice for a give dart type (only mermaid is supported atm)');
   parser.addOption(
     'path',
     abbr: 'p',
@@ -48,9 +50,37 @@ void main(List<String> args) async {
 
   // TODO: implement ignore private for both listing types and printing graph
   parser.addFlag(
-    'ignore-private',
-    abbr: 'i',
+    'no-private',
+    abbr: 'n',
     help: 'ignore private declarations',
+    negatable: false,
+    // TODO: remove once implemented
+    hide: true,
+  );
+
+  // TODO: make this default if `image-url` or `image
+  parser.addFlag(
+    'console',
+    abbr: 'c',
+    help:
+        'print the mermaid graph to console (on by default except when `list`, `image-url`, or `view-url` is provided)',
+    negatable: false,
+    // TODO: remove once implemented
+    hide: true,
+  );
+  parser.addFlag(
+    'image-url',
+    abbr: 'i',
+    help: 'Generate a mermaid.ink url for a image version of the graph',
+    negatable: false,
+    // TODO: remove once implemented
+    hide: true,
+  );
+
+  parser.addFlag(
+    'view-url',
+    abbr: 'v',
+    help: 'Generate a mermaid.live url for viewing the graph',
     negatable: false,
     // TODO: remove once implemented
     hide: true,
@@ -66,7 +96,7 @@ void main(List<String> args) async {
   final result = parser.parse(args);
 
   if (result['help']) {
-    printUsage(parser);
+    _printUsage(parser);
     exit(0);
   }
 
@@ -76,7 +106,7 @@ void main(List<String> args) async {
   if (path == null && code == null) {
     print('Error: either a `path` path or a `string` of dart code must be provided');
     print('');
-    printUsage(parser);
+    _printUsage(parser);
     print('');
     exit(1);
   }
@@ -87,7 +117,7 @@ void main(List<String> args) async {
     print(
         'Error: either provide type to be analyzed or use `--list` to see the types in the provided `path` or `string`');
     print('');
-    printUsage(parser);
+    _printUsage(parser);
     print('');
     exit(1);
   }
@@ -95,7 +125,7 @@ void main(List<String> args) async {
   final filter = result['filter'] as List<String>;
 
   try {
-    await process(code: code, path: path, selectedTypes: types, filter: filter);
+    await _process(code: code, path: path, selectedTypes: types, filter: filter);
   } catch (e, st) {
     print('something went wrong:');
     print(e);
@@ -106,7 +136,7 @@ void main(List<String> args) async {
   return;
 }
 
-void printUsage(ArgParser parser) {
+void _printUsage(ArgParser parser) {
   final usage = parser.usage.split('\n');
   print(usage.first);
   print('');
@@ -118,7 +148,7 @@ void printUsage(ArgParser parser) {
   usage.skip(1).map((e) => '  $e').forEach(print);
 }
 
-Future<void> process({
+Future<void> _process({
   required List<String> selectedTypes,
   String? path,
   String? code,
