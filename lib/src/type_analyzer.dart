@@ -27,11 +27,11 @@ class TypeAnalyzer {
   //        unless we operate on `TypeDefiningElement`s all the way instead of `DartType` as the former has `library`
   //        as a member.
   late final TypeProvider _typeProvider;
-  late final TypeSystem _typeSystem;
+  late final TypeSystem typeSystem;
 
   /// create a [TypeAnalyzer] for a single [LibraryElement]
   TypeAnalyzer(LibraryElement libraryElement) {
-    _typeSystem = libraryElement.typeSystem;
+    typeSystem = libraryElement.typeSystem;
     _typeProvider = libraryElement.typeProvider;
     classes = _collectClasses(libraryElement);
     typeAliasElements = _collectTypeAliases(libraryElement);
@@ -45,8 +45,8 @@ class TypeAnalyzer {
 
     // TODO: find out how we can merge the `typeSystem` and `typeProvider` for all libraries.
     //       I believe it doesn't make a difference because we only use it for core types and finding if two
-    //       types are subtypes. 
-    _typeSystem = libraryElements.first.typeSystem;
+    //       types are subtypes.
+    typeSystem = libraryElements.first.typeSystem;
     _typeProvider = libraryElements.first.typeProvider;
 
     for (var libraryElement in libraryElements) {
@@ -89,11 +89,6 @@ class TypeAnalyzer {
     return allTypes;
   }
 
-  /// Return `true` if the [a] is a subtype of the [b].
-  bool isSubType(DartType a, DartType b) {
-    return _typeSystem.isSubtypeOf(a, b);
-  }
-
   List<DartType> getSubTypes(DartType type) {
     final e = type.element;
     final types = <DartType>[];
@@ -106,13 +101,13 @@ class TypeAnalyzer {
     return types;
   }
 
-  List<DartType> getSuperTypes(DartType type) {
+  static List<DartType> getSuperTypes(DartType type, TypeProvider typeProvider) {
     final e = type.element;
 
     if (e is TypeAliasElement) {
       // note: if `type` is FunctionType then element is `null` so it's safe to do this.
       //       in most cases, we will just get an InterfaceElement
-      return getSuperTypes(e.aliasedType);
+      return getSuperTypes(e.aliasedType, typeProvider);
     }
 
     final types = <DartType>[];
@@ -120,7 +115,7 @@ class TypeAnalyzer {
       types.addAll(e.allSupertypes);
     }
 
-    types.add(_typeProvider.objectQuestionType);
+    types.add(typeProvider.objectQuestionType);
 
     return types;
   }
@@ -128,7 +123,7 @@ class TypeAnalyzer {
   List<DartType> collectTypesFromFunctionType(FunctionType type) {
     // final paras = type.parameters;
     final returnType = type.returnType;
-    final returnTypes = [...getSubTypes(returnType), returnType, ...getSuperTypes(returnType)];
+    final returnTypes = [...getSubTypes(returnType), returnType, ...getSuperTypes(returnType, _typeProvider)];
 
     final parametersTypes = type.parameters
         .map((p) => [
@@ -136,7 +131,7 @@ class TypeAnalyzer {
               ...getSubTypes(p.type).map((t) => p.copyWith(type: t)),
               p,
               // p.type.element is ClassElement, not ParameterElement, so we need to get the element back
-              ...getSuperTypes(p.type).map((t) => p.copyWith(type: t)),
+              ...getSuperTypes(p.type, _typeProvider).map((t) => p.copyWith(type: t)),
             ])
         .toList();
 
@@ -168,7 +163,7 @@ class TypeAnalyzer {
   List<DartType> collectTypesFromInterfaceType(InterfaceType type) {
     return <DartType>[
       _typeProvider.objectType,
-      ...getSuperTypes(type),
+      ...getSuperTypes(type, _typeProvider),
       type,
       ...getSubTypes(type),
       _typeProvider.neverType,
@@ -192,12 +187,20 @@ class TypeAnalyzer {
     return buff.toString();
   }
 
-  void sortTypes(List<DartType> types) {
-    types.sort((a, b) => a == b
-        ? 0
-        : isSubType(a, b)
-            ? 1
-            : -1);
+  static void sortTypes(List<DartType> types, TypeSystem typeSystem) {
+    types.sort((a, b) {
+      if (a == b) return 0;
+
+      if (typeSystem.isSubtypeOf(a, b)) {
+        return 1;
+      }
+
+      if (typeSystem.isSubtypeOf(b, a)) {
+        return -1;
+      }
+      // sort unrelated alphabetically if equal
+      return a.getDisplayString(withNullability: true).compareTo(b.getDisplayString(withNullability: true));
+    });
   }
 
   static List<ClassElement> _collectClasses(LibraryElement libraryElement) {

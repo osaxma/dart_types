@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:analyzer/dart/element/type.dart';
+import 'package:analyzer/dart/element/type_system.dart';
 import 'package:collection/collection.dart';
 import 'type_analyzer.dart';
 
@@ -16,7 +17,7 @@ class Lattice {
     List<String> filter = const [],
   }) {
     final types = _collectTypes(type, typeAnalyzer, filter);
-    final matrix = _createTypeMatrix(types, typeAnalyzer);
+    final matrix = _createTypeMatrix(types, typeAnalyzer.typeSystem);
     graph = transitiveReduction(matrix);
   }
 
@@ -26,8 +27,14 @@ class Lattice {
     List<String> filter = const [],
   }) {
     selectedTypes = selectedTypes.map((t) => _collectTypes(t, typeAnalyzer, filter)).flattened.toList();
-    typeAnalyzer.sortTypes(selectedTypes);
-    final matrix = _createTypeMatrix(selectedTypes, typeAnalyzer);
+    TypeAnalyzer.sortTypes(selectedTypes, typeAnalyzer.typeSystem);
+    final matrix = _createTypeMatrix(selectedTypes, typeAnalyzer.typeSystem);
+    graph = transitiveReduction(matrix);
+  }
+
+  Lattice.fromTypes(List<DartType> types, TypeSystem typeSystem) {
+    TypeAnalyzer.sortTypes(types, typeSystem);
+    final matrix = _createTypeMatrix(types, typeSystem);
     graph = transitiveReduction(matrix);
   }
 
@@ -49,15 +56,15 @@ class Lattice {
       });
     }
     if (sorted) {
-      typeAnalyzer.sortTypes(types);
+      TypeAnalyzer.sortTypes(types, typeAnalyzer.typeSystem);
     }
     return types;
   }
 
-  static Map<DartType, List<DartType>> _createTypeMatrix(List<DartType> types, TypeAnalyzer typeAnalyzer) {
+  static Map<DartType, List<DartType>> _createTypeMatrix(List<DartType> types, TypeSystem typeSystem) {
     final matrix = <DartType, List<DartType> /* subtypes */ >{};
     for (var t in types) {
-      final edges = types.where((element) => element != t && typeAnalyzer.isSubType(element, t)).toList();
+      final edges = types.where((element) => element != t && typeSystem.isSubtypeOf(element, t)).toList();
       matrix[t] = edges;
     }
 
