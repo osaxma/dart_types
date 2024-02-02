@@ -14,9 +14,14 @@ import 'package:analyzer/dart/element/element.dart';
 class SimpleSearchEngine {
   late final String path;
 
-  // we need to use the implementation so we can access drivers, search and enable indexing (so we can search subtypes)
-  late final collection = AnalysisContextCollectionImpl(includedPaths: [path], enableIndex: true);
-  List<AnalysisDriver> get drivers => collection.contexts.map((e) => e).map((e) => e.driver).toList();
+  // We need to use the implementation so we can access drivers, search and
+  // enable indexing (so we can search subtypes)
+  late final collection = AnalysisContextCollectionImpl(
+    includedPaths: [path],
+    enableIndex: true,
+  );
+  List<AnalysisDriver> get drivers =>
+      collection.contexts.map((e) => e).map((e) => e.driver).toList();
 
   SimpleSearchEngine(String path) {
     this.path = p.normalize(p.absolute(path));
@@ -30,10 +35,12 @@ class SimpleSearchEngine {
   }
 
   Future<Element?> findElement<T extends Element>(String pattern) async {
-    // if all the code leading to here was synchronous, we can have an issue where the drivers haven't completed
-    // all their asynchronous code and we may not get a result even if there should be one.
-    // so we add a delay here to the execution so all the drivers events in the event loop are processed first.
-    // (not sure if there is something in the drivers that we can await for (eg `await driver.isReady`))
+    // if all the code leading to here was synchronous, we can have an issue where the drivers
+    // haven't completed all their asynchronous code and we may not get a result even if there
+    // should be one. So we add a delay here to the execution so all the drivers events in
+    // the event loop are processed first.
+    //
+    // not sure if there's a way to wait for the drivers to be ready.
     await Future.delayed(Duration(microseconds: 1)); // remove this, and you will get nothing....
     for (var driver in drivers) {
       var elements = await driver.search.topLevelElements(RegExp('^$pattern\$'));
@@ -44,7 +51,8 @@ class SimpleSearchEngine {
     return null;
   }
 
-  Future<List<InterfaceElement>> findSubtypes(InterfaceElement element, {bool recursive = false}) async {
+  Future<List<InterfaceElement>> findSubtypes(InterfaceElement element,
+      {bool recursive = false}) async {
     final subtypes = <InterfaceElement>[];
     for (var driver in drivers) {
       final res = await driver.search.subTypes(element, SearchedFiles());

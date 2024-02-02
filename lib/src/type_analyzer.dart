@@ -123,7 +123,11 @@ class TypeAnalyzer {
   List<DartType> collectTypesFromFunctionType(FunctionType type) {
     // final paras = type.parameters;
     final returnType = type.returnType;
-    final returnTypes = [...getSubTypes(returnType), returnType, ...getSuperTypes(returnType, _typeProvider)];
+    final returnTypes = [
+      ...getSubTypes(returnType),
+      returnType,
+      ...getSuperTypes(returnType, _typeProvider)
+    ];
 
     final parametersTypes = type.parameters
         .map((p) => [
@@ -173,7 +177,9 @@ class TypeAnalyzer {
   String getAllTypesAsPrettyString([bool grouped = false]) {
     final allTypes = getAllTypes();
     if (!grouped) {
-      return getAllTypes().map((e) => '- ${e.getDisplayString(withNullability: true)}\n').fold('', (p, n) => p + n);
+      return getAllTypes()
+          .map((e) => '- ${e.getDisplayString(withNullability: true)}\n')
+          .fold('', (p, n) => p + n);
     }
 
     final groups = groupBy(allTypes, (t) => t.runtimeType.toString().replaceAll('Impl', ''));
@@ -199,7 +205,9 @@ class TypeAnalyzer {
         return -1;
       }
       // sort unrelated alphabetically if equal
-      return a.getDisplayString(withNullability: true).compareTo(b.getDisplayString(withNullability: true));
+      return a
+          .getDisplayString(withNullability: true)
+          .compareTo(b.getDisplayString(withNullability: true));
     });
   }
 
@@ -225,7 +233,9 @@ class TypeAnalyzer {
     //  - This messes up with least upper bound
     //  - The added subtypes are ignored when computing the greatest lower bound
     //    - the algorithm ignores subtypes (i believe it does even for sealed/final classes)
-    return collectedClasses.map((clazz) => _ClassElementExtended._addSubtypes(clazz, libraryElement)).toList();
+    return collectedClasses
+        .map((clazz) => _ClassElementExtended._addSubtypes(clazz, libraryElement))
+        .toList();
   }
 
   static List<TypeAliasElement> _collectTypeAliases(LibraryElement libraryElement) {

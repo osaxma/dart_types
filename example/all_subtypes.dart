@@ -10,8 +10,8 @@ import 'package:analyzer/dart/element/element.dart';
 void main() async {
   final sw = Stopwatch()..start();
 
-  final typeToFind = 'StatefulWidget';
   final path = _getFlutterLibPath();
+  final typeToFind = 'StatefulWidget';
   final engine = SimpleSearchEngine(path);
   final type = await engine.findElement(typeToFind);
   final subtypes = <InterfaceElement>[];

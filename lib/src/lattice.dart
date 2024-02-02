@@ -26,7 +26,8 @@ class Lattice {
     required TypeAnalyzer typeAnalyzer,
     List<String> filter = const [],
   }) {
-    selectedTypes = selectedTypes.map((t) => _collectTypes(t, typeAnalyzer, filter)).flattened.toList();
+    selectedTypes =
+        selectedTypes.map((t) => _collectTypes(t, typeAnalyzer, filter)).flattened.toList();
     TypeAnalyzer.sortTypes(selectedTypes, typeAnalyzer.typeSystem);
     final matrix = _createTypeMatrix(selectedTypes, typeAnalyzer.typeSystem);
     graph = transitiveReduction(matrix);
@@ -46,13 +47,16 @@ class Lattice {
     } else if (type is InterfaceType) {
       types = typeAnalyzer.collectTypesFromInterfaceType(type);
     } else {
-      throw UnimplementedError('Only InterfaceType or FunctionType are supported but type: $type was given');
+      throw UnimplementedError(
+          'Only InterfaceType or FunctionType are supported but type: $type was given');
     }
     if (filter.isNotEmpty) {
       types.removeWhere((t) {
         var typeName = t.getDisplayString(withNullability: false);
         // TODO: maybe we need to make the interpolated value as raw if it contains `$` or something else
-        return filter.map((e) => RegExp('(?![^a-zA-Z0-9_])$e(?=[^a-zA-Z0-9_])')).any((f) => typeName.contains(f));
+        return filter
+            .map((e) => RegExp('(?![^a-zA-Z0-9_])$e(?=[^a-zA-Z0-9_])'))
+            .any((f) => typeName.contains(f));
       });
     }
     if (sorted) {
@@ -61,10 +65,12 @@ class Lattice {
     return types;
   }
 
-  static Map<DartType, List<DartType>> _createTypeMatrix(List<DartType> types, TypeSystem typeSystem) {
+  static Map<DartType, List<DartType>> _createTypeMatrix(
+      List<DartType> types, TypeSystem typeSystem) {
     final matrix = <DartType, List<DartType> /* subtypes */ >{};
     for (var t in types) {
-      final edges = types.where((element) => element != t && typeSystem.isSubtypeOf(element, t)).toList();
+      final edges =
+          types.where((element) => element != t && typeSystem.isSubtypeOf(element, t)).toList();
       matrix[t] = edges;
     }
 

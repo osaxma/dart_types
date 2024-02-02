@@ -140,7 +140,8 @@ void _printUsage(ArgParser parser) {
   final usage = parser.usage.split('\n');
   print(usage.first);
   print('');
-  print('Example (from string): dart_types -s "class A{} class B extends A{} class C extends B{}" -t "C"');
+  print(
+      'Example (from string): dart_types -s "class A{} class B extends A{} class C extends B{}" -t "C"');
   print('Example   (from path): dart_types -p path/to/file.dart -c "MyClass"');
   print('Example  (list types): dart_types -p path/to/file.dart --list');
   print('');
@@ -169,9 +170,12 @@ Future<void> _process({
     final types = <DartType>[];
     for (var selectedType in selectedTypes) {
       // first, check a type alias was selected by its name (displayName is only available at the alias element)
-      var type = typeAnalyzer.typeAliasElements.firstWhereOrNull((e) => e.displayName == selectedType)?.aliasedType;
+      var type = typeAnalyzer.typeAliasElements
+          .firstWhereOrNull((e) => e.displayName == selectedType)
+          ?.aliasedType;
 
-      type ??= allTypes.firstWhereOrNull((t) => t.getDisplayString(withNullability: true) == selectedType);
+      type ??= allTypes
+          .firstWhereOrNull((t) => t.getDisplayString(withNullability: true) == selectedType);
 
       if (type == null) {
         print('Error: selected type "$type" does not exists.');
@@ -181,7 +185,8 @@ Future<void> _process({
       types.add(type);
     }
 
-    final lattice = Lattice.merged(selectedTypes: types, typeAnalyzer: typeAnalyzer, filter: filter);
+    final lattice =
+        Lattice.merged(selectedTypes: types, typeAnalyzer: typeAnalyzer, filter: filter);
     print(lattice.toMermaidGraph(highlight: types));
     return;
   } else {
