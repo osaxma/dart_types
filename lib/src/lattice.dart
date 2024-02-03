@@ -69,8 +69,10 @@ class Lattice {
       List<DartType> types, TypeSystem typeSystem) {
     final matrix = <DartType, List<DartType> /* subtypes */ >{};
     for (var t in types) {
-      final edges =
-          types.where((element) => element != t && typeSystem.isSubtypeOf(element, t)).toList();
+      final edges = types
+          .where((element) => element != t && typeSystem.isSubtypeOf(element, t))
+          .toSet()
+          .toList();
       matrix[t] = edges;
     }
 
@@ -78,6 +80,7 @@ class Lattice {
   }
 }
 
+// TODO move separate class
 extension MermaidGraph on Lattice {
   String toMermaidGraph({List<DartType>? highlight}) {
     final buff = StringBuffer();
@@ -115,6 +118,65 @@ extension MermaidGraph on Lattice {
     if (highlight != null) {
       for (var type in highlight) {
         final tag = type.getDisplayString(withNullability: true).hashCode;
+        buff.writeln('style $tag color:#7FFF7F');
+      }
+    }
+
+    return buff.toString();
+  }
+
+  // Fixes issues with generics
+  // e.g. same type, different generic variable -- List<T> vs List<R> is the same here
+  String toMermaidGraph2({List<DartType>? highlight}) {
+    final buff = StringBuffer();
+
+    final tags = <int>{};
+
+    final pattern = RegExp('<.*>');
+
+    final newGraph = <String, Set<String>>{};
+    for (var entry in graph.entries) {
+      final newKey = entry.key.getDisplayString(withNullability: true).replaceAll(pattern, '');
+      final value = entry.value
+          .map((e) => e.getDisplayString(withNullability: true).replaceAll(pattern, ''))
+          .toSet();
+      newGraph.update(newKey, (v) => v..addAll(value), ifAbsent: () => value);
+
+      // self-refrential due to removing generics could happen
+      newGraph[newKey]!.remove(newKey);
+    }
+
+    // Keep this on the top
+    // so no need to scroll back to the bottom of the terminal after selecting the code from bottom to top.
+    buff.writeln('%% To view the graph, copy the code below to:');
+    buff.writeln('%%  https://mermaid.live/');
+
+    buff.writeln('graph TD');
+    for (var entry in newGraph.entries) {
+      final from = entry.key;
+      // note: do not use `DartType.hashCode` -- a lot of collisons there.
+      //       so we use the display string hashcode instead
+      final fromTag = from.hashCode;
+      for (var type in entry.value) {
+        final to = type;
+        final toTag = to.hashCode;
+
+        buff.write('  ${fromTag}');
+        if (tags.add(fromTag)) {
+          buff.write('("$from")');
+        }
+        buff.write(' --> $toTag');
+        if (tags.add(toTag)) {
+          buff.write('("$to")');
+        }
+        buff.writeln();
+      }
+    }
+
+    buff.write('\n\n');
+    if (highlight != null) {
+      for (var type in highlight) {
+        final tag = type.getDisplayString(withNullability: true).replaceAll(pattern, '').hashCode;
         buff.writeln('style $tag color:#7FFF7F');
       }
     }

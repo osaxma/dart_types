@@ -6,13 +6,11 @@ import 'package:dart_types/src/search.dart';
 import 'package:path/path.dart' as p;
 import 'package:analyzer/dart/element/element.dart';
 
-// this thing is slow because it analyzes the entire project
+// this thing is slow because it analyzes the entire flutter library
 void main() async {
-  final sw = Stopwatch()..start();
-
   final path = _getFlutterLibPath();
   final typeToFind = 'StatefulWidget';
-  final engine = SimpleSearchEngine(path);
+  final engine = await SimpleSearchEngine.create(path);
   final type = await engine.findElement(typeToFind);
   final subtypes = <InterfaceElement>[];
   if (type is ClassElement) {
@@ -40,9 +38,10 @@ void main() async {
   // this will be a huge URL .. but it works
   print(MermaidGraph.generateMermaidUrl(graph));
 
-  print('took ${sw.elapsed.inSeconds}');
   await engine.dispose();
 }
+
+
 
 String _getFlutterLibPath() {
   var flutterLibPath = Process.runSync('which', ['flutter']).stdout;
