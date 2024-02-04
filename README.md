@@ -1,10 +1,11 @@
 # Dart Types
 
-A cli/package to construct and present the type lattice of a given dart type.
+A utility to construct and present the type graph of dart type(s).
 
 ### Features:
-- Generate the type lattice of given dart type(s) (only mermaid graph supported atm)
-- List all types within a file
+- Generate the type graph of given dart type(s) 
+- Generate Mermaid code (as code, as url for view, edit or image)
+- List all types within a path.
 
 > Note: generics are ignored at the moment
 
@@ -13,10 +14,10 @@ A cli/package to construct and present the type lattice of a given dart type.
 ```
 dart pub global activate dart_types
 ```
-
+<!-- TODO: update usage -->
 Usage:
 ```
-Generate type lattice for a give dart type (only mermaid is supported atm)
+Generate type graph for a give dart type (only mermaid is supported atm)
 
 Example (from string): dart_types -s "class A{} class B extends A{} class C extends B{}" -t "C"
 Example   (from path): dart_types -p path/to/file.dart -c "MyClass"
@@ -26,7 +27,7 @@ Usage: dart_types [options]
   -p, --path      Specify the path of the file where the type(s) are (must provide this or `string`)
   -s, --string    Provide a string containing the type(s) (must provide this or `path`)
   -t, --type      Specify the type to be selected from the given <string> or <path> (can be used multiple times)
-  -f, --filter    Filter out types from the type lattice (can be used multiple times)
+  -f, --filter    Filter out types from the type graph (can be used multiple times)
   -l, --list      list all the types from the given <string> or <path>
   -h, --help      prints this usage information
 ```

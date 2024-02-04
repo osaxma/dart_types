@@ -1,8 +1,12 @@
 import 'package:dart_types/dart_types.dart';
 
 Future<void> main() async {
-  final typeAnalyzer = await TypeAnalyzer.fromCode('typedef Func = int Function(int);');
-  final type = typeAnalyzer.functionTypes.first;
-  final lattice = Lattice(type: type, typeAnalyzer: typeAnalyzer);
-  print(lattice.toMermaidGraph(highlight: [type]));
+  final path = 'example/samples/typedef.dart';
+
+  final typeGraph = await TypeGraph.generateForFunctionType(path: path, functionName: 'Func');
+  final mermaidGraph = typeGraph.toMermaidGraph();
+
+  print('');
+  print(mermaidGraph.viewUrl);
+  print('');
 }

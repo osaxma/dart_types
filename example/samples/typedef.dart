@@ -1,0 +1,1 @@
+typedef Func = int Function(int);

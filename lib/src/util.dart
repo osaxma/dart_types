@@ -31,28 +31,34 @@ Iterable<List<T>> allCombinations<T>(List<List<T>> sources) sync* {
   }
 }
 
-/// Return the [transitive reduction][] of [graph]
+/// Returns the [transitive reduction][] of [graph].
 ///
-/// [transitive reduction]:https://en.wikipedia.org/wiki/Transitive_reduction
+/// [transitive reduction]: https://en.wikipedia.org/wiki/Transitive_reduction
+///
+/// Interprets [graph] as a directed graph with a vertex for each key and edges
+/// from each key to the values that the key maps to.
+///
+/// Assumes that every vertex in the graph has a key to represent it, even if
+/// that vertex has no outgoing edges. This isn't checked, but if it's not
+/// satisfied, the function may crash or provide unexpected output. For example,
+/// `{"a": ["b"]}` is not valid, but `{"a": ["b"], "b": []}` is.
 // note: this was copied from `package:collection` (transitiveClosure) and one line was modified for reduction
 //       i.e. delete edges instead of adding them
+// TODO: this isn't accurate (e.g. ` A -> B -> C -> D; A -> C; A-> D` won't remove A->D)
 Map<T, Set<T>> transitiveReduction<T>(Map<T, Iterable<T>> graph) {
-// algorithm TLDR:
-// foreach x in graph.vertices
-//    foreach y in graph.vertices
-//       foreach z in graph.vertices
-//          delete edge xz if edges xy and yz exist
   var result = <T, Set<T>>{};
   graph.forEach((vertex, edges) {
-    result[vertex] = Set<T>.from(edges);
+    result[vertex] = Set<T>.from(edges.where((element) => element != vertex));
   });
 
+  // Lists are faster to iterate than maps, so we create a list since we're
+  // iterating repeatedly.
   var keys = graph.keys.toList();
   for (var vertex1 in keys) {
     for (var vertex2 in keys) {
       for (var vertex3 in keys) {
-        if (result[vertex2]!.contains(vertex1) && result[vertex1]!.contains(vertex3)) {
-          result[vertex2]!.remove(vertex3); // modified this line only
+        if (result[vertex1]!.contains(vertex2) && result[vertex2]!.contains(vertex3)) {
+          result[vertex1]!.remove(vertex3);
         }
       }
     }

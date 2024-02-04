@@ -1,8 +1,13 @@
 import 'package:dart_types/dart_types.dart';
 
 Future<void> main() async {
-  final typeAnalyzer = await TypeAnalyzer.fromPath('example/samples/organism.dart');
-  final type = typeAnalyzer.getClass('UltimateOrganism')!.thisType;
-  final lattice = Lattice(type: type, typeAnalyzer: typeAnalyzer);
-  print(lattice.toMermaidGraph(highlight: [type]));
+  final path = 'example/samples/organism.dart';
+
+  final typeGraph =
+      await TypeGraph.generateForInterfaceTypes(path: path, selectedTypes: ['UltimateOrganism']);
+  final mermaidGraph = typeGraph.toMermaidGraph();
+
+  print('');
+  print(mermaidGraph.code);
+  print('');
 }
