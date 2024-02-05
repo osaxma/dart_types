@@ -83,7 +83,7 @@ class TypesCollection {
     await engine.dispose();
 
     return TypesCollection._(
-        allTypes: allTypes, selectedTypes: typesToHighlight, typeSystem: typeSystem);
+        allTypes: allTypes.toSet().toList(), selectedTypes: typesToHighlight, typeSystem: typeSystem);
   }
 
   static Future<TypesCollection> collectTypeInfoForFunctionTypes({

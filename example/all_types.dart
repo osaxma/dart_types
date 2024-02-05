@@ -10,7 +10,7 @@ void main() async {
 
   final typeGraph = await TypeGraph.generateForInterfaceTypes(
     path: path,
-    selectedTypes: ['StatelessWidget'],
+    // selectedTypes: ['StatefulWidget'],
     filters: ['^_.*'], // no privates
   );
   final mermaidGraph = typeGraph.toMermaidGraph();

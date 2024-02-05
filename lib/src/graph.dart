@@ -11,8 +11,8 @@ class TypeGraph {
 
   TypeGraph.fromTypes(List<DartType> types, TypeSystem typeSystem,
       [this.selectedTypes = const []]) {
-    sortTypes(types, typeSystem);
     final matrix = _createTypeMatrix(types, typeSystem);
+
     graph = transitiveReduction(matrix);
   }
 
@@ -47,7 +47,9 @@ class TypeGraph {
 
   static Map<DartType, List<DartType>> _createTypeMatrix(
       List<DartType> types, TypeSystem typeSystem) {
+    logger.trace('_createTypeMatrix start (types length: ${types.length})');
     final matrix = <DartType, List<DartType> /* subtypes */ >{};
+    sortTypes(types, typeSystem);
     for (var t in types) {
       final edges = types
           .where((element) => element != t && typeSystem.isSubtypeOf(element, t))
@@ -56,8 +58,32 @@ class TypeGraph {
       matrix[t] = edges;
     }
 
+    logger.trace('_createTypeMatrix end: (matrix length = ${matrix.length})');
+
     return matrix;
   }
+
+  // // Note:
+  // static Map<DartType, List<DartType>> _createTypeMatrix2(
+  //     List<DartType> types, TypeSystem typeSystem) {
+  //   logger.trace('_createTypeMatrix2 start (types length: ${types.length})');
+  //   sortTypes(types, typeSystem);
+  //   final matrix = <DartType, List<DartType> /* subtypes */ >{};
+  //   final edges = <DartType>[];
+
+  //   for (var i = types.length - 1; i > 0; i--) {
+  //     if (!typeSystem.isSubtypeOf(types[i], types[i - 1])) {
+  //       matrix[types[i - 1]] = edges;
+  //       edges.clear();
+  //     } else {
+  //       edges.add(types[i]);
+  //     }
+  //   }
+
+  //   logger.trace('_createTypeMatrix2 end: (matrix length = ${matrix.length})');
+
+  //   return matrix;
+  // }
 
   static void sortTypes(List<DartType> types, TypeSystem typeSystem) {
     types.sort((a, b) {

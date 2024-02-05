@@ -5,6 +5,7 @@ import 'package:analyzer/src/dart/analysis/analysis_context_collection.dart';
 import 'package:analyzer/src/dart/analysis/search.dart';
 // -----
 import 'package:collection/collection.dart';
+import 'package:dart_types/src/util.dart';
 import 'package:path/path.dart' as p;
 import 'package:analyzer/dart/element/element.dart';
 
@@ -93,6 +94,7 @@ class SimpleSearchEngine {
 
   Future<List<InterfaceElement>> getAllTypes() async {
     final types = <InterfaceElement>[];
+    logger.trace('getAllTypes: start');
     for (var driver in drivers) {
       final res = await driver.search.topLevelElements(RegExp('.*'));
       types.addAll(
@@ -103,11 +105,13 @@ class SimpleSearchEngine {
             .where((element) => p.isWithin(path, element.source.fullName)),
       );
     }
+    logger.trace('getAllTypes: end (types length: ${types.length})');
     return types;
   }
 
   Future<List<TypeDefiningElement>> getAllTypeDefiningElements() async {
     final types = <TypeDefiningElement>[];
+    logger.trace('getAllTypeDefiningElements: start');
     for (var driver in drivers) {
       final res = await driver.search.topLevelElements(RegExp('.*'));
       types.addAll(
@@ -121,6 +125,7 @@ class SimpleSearchEngine {
                 (path == element.source!.fullName || p.isWithin(path, element.source!.fullName))),
       );
     }
+    logger.trace('getAllTypeDefiningElements: end (types length: ${types.length})');
     return types;
   }
 
@@ -130,12 +135,16 @@ class SimpleSearchEngine {
     int depth = 10,
   }) async {
     final subTypesFutures = <Future<List<InterfaceElement>>>[];
-
+    logger.trace('findSubtypesForAll: start (types length: ${types.length})');
     for (var type in types) {
       subTypesFutures.add(findSubtypes(type, recursive: recursive, depth: depth));
     }
 
-    return await Future.wait(subTypesFutures).then((value) => value.flattened.toList());
+    final allSubtypes =
+        await Future.wait(subTypesFutures).then((value) => value.flattened.toList());
+
+    logger.trace('findSubtypesForAll: end (all subtypes length: ${allSubtypes.length})');
+    return allSubtypes;
   }
 
   Future<void> dispose() async {

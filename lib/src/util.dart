@@ -5,6 +5,7 @@ import 'package:analyzer/dart/analysis/results.dart';
 import 'package:analyzer/dart/element/element.dart';
 import 'package:analyzer/file_system/overlay_file_system.dart';
 import 'package:analyzer/file_system/physical_file_system.dart';
+import 'package:cli_util/cli_logging.dart';
 import 'package:path/path.dart' as p;
 
 // gracias a @lrhn: https://stackoverflow.com/a/68816742/10976714
@@ -46,6 +47,7 @@ Iterable<List<T>> allCombinations<T>(List<List<T>> sources) sync* {
 //       i.e. delete edges instead of adding them
 // TODO: this isn't accurate (e.g. ` A -> B -> C -> D; A -> C; A-> D` won't remove A->D)
 Map<T, Set<T>> transitiveReduction<T>(Map<T, Iterable<T>> graph) {
+  logger.trace('transitiveReduction start (graph length: ${graph.length})');
   var result = <T, Set<T>>{};
   graph.forEach((vertex, edges) {
     result[vertex] = Set<T>.from(edges.where((element) => element != vertex));
@@ -63,7 +65,7 @@ Map<T, Set<T>> transitiveReduction<T>(Map<T, Iterable<T>> graph) {
       }
     }
   }
-
+  logger.trace('transitiveReduction end: (result length = ${result.length})');
   return result;
 }
 
@@ -104,3 +106,8 @@ Future<LibraryElement> getLibraryElementFromFile(String path) async {
 
   return resolvedUnit.element;
 }
+
+/* logging */
+bool verbose = false;
+Logger? _logger;
+Logger get logger => _logger ??= verbose ? Logger.verbose() : Logger.standard();
