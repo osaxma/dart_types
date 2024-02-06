@@ -9,7 +9,8 @@ class MermaidGraph {
   MermaidGraph(
     Map<DartType /* nodes */, Set<DartType> /* edges | subtypes */ > graph, {
     List<DartType>? typesToHighLight,
-  }) : code = generateMermaidCode2(graph: graph);
+    String? graphType,
+  }) : code = generateMermaidCode2(graph: graph, graphType: graphType ?? 'LR');
 
   late final String encodedGraph = _encodeMermaidGraph(code);
 
@@ -61,6 +62,7 @@ class MermaidGraph {
   static String generateMermaidCode({
     required Map<DartType, Set<DartType>> graph,
     List<DartType>? typesToHighLight,
+    String graphType = 'LR',
   }) {
     final buff = StringBuffer();
 
@@ -71,7 +73,7 @@ class MermaidGraph {
     buff.writeln('%% To view the graph, copy the code below to:');
     buff.writeln('%%  https://mermaid.live/');
 
-    buff.writeln('graph TD');
+    buff.writeln('graph $graphType');
     for (var entry in graph.entries) {
       final from = entry.key.getDisplayString(withNullability: true);
       // note: do not use `DartType.hashCode` -- a lot of collisons there.
@@ -109,6 +111,7 @@ class MermaidGraph {
   static String generateMermaidCode2({
     required Map<DartType, Set<DartType>> graph,
     List<DartType>? typesToHighLight,
+    String graphType = 'LR',
   }) {
     final buff = StringBuffer();
 
@@ -135,7 +138,7 @@ class MermaidGraph {
     buff.writeln('%% To view the graph, copy the code below to:');
     buff.writeln('%%  https://mermaid.live/');
 
-    buff.writeln('graph TD');
+    buff.writeln('graph $graphType');
     for (var entry in newGraph.entries) {
       final from = entry.key;
       // note: do not use `DartType.hashCode` -- a lot of collisons there.

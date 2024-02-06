@@ -2,11 +2,8 @@ import 'dart:async';
 import 'dart:io';
 
 import 'package:analyzer/dart/element/element.dart';
-import 'package:analyzer/dart/element/type.dart';
 import 'package:args/command_runner.dart';
-import 'package:collection/collection.dart';
 import 'package:dart_types/dart_types.dart';
-import 'package:dart_types/src/mermaid.dart';
 import 'package:dart_types/src/search.dart';
 
 class Runner extends CommandRunner {
@@ -65,13 +62,18 @@ class ListCommand extends BaseCommand {
   @override
   FutureOr<void> run() async {
     final engine = await SimpleSearchEngine.create(path);
-    final types = await engine.getAllTypes();
-    filterTypes(types);
-    for (var t in types) {
-      print('- ${t.displayName}');
+    try {
+      final types = await engine.getAllTypes();
+      filterTypes(types);
+      for (var t in types) {
+        print('- ${t.displayName}');
+      }
+    } catch (e) {
+      print('something went wrong');
+      print('$e');
+    } finally {
+      await engine.dispose();
     }
-
-    await engine.dispose();
   }
 }
 
@@ -91,7 +93,7 @@ class MermaidCommand extends BaseCommand {
     );
     argParser.addFlag(
       'url',
-      abbr: 'v',
+      abbr: 'u',
       help: 'generate a url to mermaid.live graph viewer',
       negatable: false,
     );
@@ -108,6 +110,17 @@ class MermaidCommand extends BaseCommand {
       help: 'generate a url to mermaid.ink graph image',
       negatable: false,
     );
+
+// https://jojozhuang.github.io/tutorial/mermaid-cheat-sheet/
+    argParser.addOption(
+      'graph-type',
+      abbr: 'g',
+      help: 'Specify the graph type: '
+          'Top Bottom, Bottom Up, Right Left, Left Right',
+      defaultsTo: 'LR',
+      // valueHelp: 'TB|BT|RL|LR',
+      allowed: ['TB', 'BT', 'RL', 'LR'],
+    );
   }
 
   @override
@@ -120,6 +133,7 @@ class MermaidCommand extends BaseCommand {
   String get description => 'Generate a mermaid graph';
 
   List<String> get selectedTypes => argResults!['type'];
+  String get graphType => argResults!['graph-type'];
 
   bool get printGraph => argResults!['code'];
   bool get printViewUrl => argResults!['url'];
@@ -139,36 +153,27 @@ class MermaidCommand extends BaseCommand {
 """);
     }
 
-    final engine = await SimpleSearchEngine.create(path);
-    final types = await engine.getAllTypes();
+    // final engine = await SimpleSearchEngine.create(path);
+    // final types = await engine.getAllTypes();
 
-    final typesToHighlight = <DartType>[];
-    if (selectedTypes.isNotEmpty) {
-      types.removeWhere((element) => !selectedTypes.contains(element.displayName));
-      typesToHighlight.addAll(types.map((e) => e.thisType));
+    // final typesToHighlight = <DartType>[];
+    // if (selectedTypes.isNotEmpty) {
+    //   types.removeWhere((element) => !selectedTypes.contains(element.displayName));
+    //   typesToHighlight.addAll(types.map((e) => e.thisType));
+    // }
+
+    final TypeGraph typeGraph;
+    try {
+      typeGraph = await TypeGraph.generateForInterfaceTypes(
+        path: path,
+        selectedTypes: selectedTypes,
+      );
+    } catch (e) {
+      print(e);
+      exit(42);
     }
 
-    if (types.isEmpty) {
-      print('could not find any of the selected types ${selectedTypes}');
-      print('To view available types, run the following command:');
-      print('     dart_types list -p $path');
-      exit(1);
-    }
-
-    // hacky though works.
-    final typeSystem = types.first.library.typeSystem;
-
-    types.addAll(await engine.findSubtypesForAll(types));
-
-    filterTypes(types);
-
-    final allTypes = <DartType>[
-      ...types.map((e) => e.allSupertypes).flattened,
-      ...types.map((e) => e.thisType),
-    ];
-
-    final typeGraph = TypeGraph.fromTypes(allTypes, typeSystem);
-    final mermaidGraph = MermaidGraph(typeGraph.graph, typesToHighLight: typesToHighlight);
+    final mermaidGraph = typeGraph.toMermaidGraph(graphType: graphType);
 
     if (printGraph) {
       print(mermaidGraph.code);
@@ -189,7 +194,5 @@ class MermaidCommand extends BaseCommand {
       print(mermaidGraph.imageUrl);
       print('');
     }
-
-    await engine.dispose();
   }
 }

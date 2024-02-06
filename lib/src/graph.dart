@@ -16,10 +16,11 @@ class TypeGraph {
     graph = transitiveReduction(matrix);
   }
 
-  static Future<TypeGraph> generateForInterfaceTypes(
-      {required String path,
-      List<String> filters = const [],
-      List<String> selectedTypes = const []}) async {
+  static Future<TypeGraph> generateForInterfaceTypes({
+    required String path,
+    List<String> filters = const [],
+    List<String> selectedTypes = const [],
+  }) async {
     final collection = await TypesCollection.collectTypeInfoForInterfaceTypes(
       path: path,
       selectedTypes: selectedTypes,
@@ -103,5 +104,9 @@ class TypeGraph {
     });
   }
 
-  MermaidGraph toMermaidGraph() => MermaidGraph(graph, typesToHighLight: selectedTypes);
+  MermaidGraph toMermaidGraph({String? graphType}) => MermaidGraph(
+        graph,
+        typesToHighLight: selectedTypes,
+        graphType: graphType,
+      );
 }
