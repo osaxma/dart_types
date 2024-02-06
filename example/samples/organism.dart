@@ -50,4 +50,5 @@ mixin Jumping on Organism implements Capabilities {}
 
 mixin Metamorphosis on Organism implements Capabilities {}
 
-class UltimateOrganism extends Organism with Swimming, Flying, Running, Crawling, Jumping, Metamorphosis {}
+class UltimateOrganism extends Organism
+    with Swimming, Flying, Running, Crawling, Jumping, Metamorphosis {}

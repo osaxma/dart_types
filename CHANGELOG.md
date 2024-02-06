@@ -1,3 +1,10 @@
+## 0.0.4
+- Support generating URLs for mermaid.live (interactive viewer and editor)
+- Support generating URLs for mermaid.ink  (image viewer)
+- Support analyzing multiple libraries
+- Support analyzing an entire project
+- Improve CLI 
+
 ## 0.0.3+1
 - update cli for multiple types
 

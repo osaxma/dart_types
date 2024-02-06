@@ -1,2 +1,1 @@
-export 'src/lattice.dart';
-export 'src/type_analyzer.dart';
+export 'src/graph.dart';
