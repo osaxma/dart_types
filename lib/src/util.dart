@@ -1,13 +1,8 @@
 import 'dart:io';
 
-import 'package:analyzer/dart/analysis/analysis_context_collection.dart';
-import 'package:analyzer/dart/analysis/results.dart';
-import 'package:analyzer/dart/element/element.dart';
-import 'package:analyzer/file_system/overlay_file_system.dart';
-import 'package:analyzer/file_system/physical_file_system.dart';
 import 'package:cli_util/cli_logging.dart';
-import 'package:path/path.dart' as p;
 
+/// Generate all possible combination for elements in multiple lists.
 // gracias a @lrhn: https://stackoverflow.com/a/68816742/10976714
 Iterable<List<T>> allCombinations<T>(List<List<T>> sources) sync* {
   if (sources.isEmpty || sources.any((l) => l.isEmpty)) {
@@ -69,45 +64,16 @@ Map<T, Set<T>> transitiveReduction<T>(Map<T, Iterable<T>> graph) {
   return result;
 }
 
-// TODO: figure out how to use caching because this thing is slow
-//       at least cache the sdk
-Future<LibraryElement> getLibraryElementFromCodeString(String code) async {
-  // this can be anything since we are using an overlay resource provider
-  final filePath = '/code.dart';
-  final collection = AnalysisContextCollection(
-    includedPaths: [filePath],
-    resourceProvider: OverlayResourceProvider(
-      PhysicalResourceProvider(),
-    )..setOverlay(
-        filePath,
-        content: code,
-        modificationStamp: 0,
-      ),
-  );
-
-  final analysisSession = collection.contextFor(filePath).currentSession;
-
-  final libraryElement = await analysisSession
-      .getLibraryByUri('file://$filePath')
-      .then((libraryResult) => (libraryResult as LibraryElementResult).element);
-  return libraryElement;
-}
-
-Future<LibraryElement> getLibraryElementFromFile(String path) async {
-  path = p.absolute(path);
-
-  if (!File(path).existsSync()) {
-    throw Exception('File does not exists: $path');
+/// Throws an Exception if [path] is not an existing [File] or [Directory].
+void throwIfPathIsNotValid(String path) {
+  if (!File(path).existsSync() && !Directory(path).existsSync()) {
+    throw Exception('Path is not a valid File or Directory: $path');
   }
-
-  final collection = AnalysisContextCollection(includedPaths: [path]);
-  final session = collection.contexts[0].currentSession;
-  final resolvedUnit = await session.getResolvedLibrary(path) as ResolvedLibraryResult;
-
-  return resolvedUnit.element;
 }
 
-/* logging */
-bool verbose = false;
+/* -------------------------------------------------------------------------- */
+/*                                   LOGGING                                  */
+/* -------------------------------------------------------------------------- */
+bool verbose = false; // YOLO
 Logger? _logger;
 Logger get logger => _logger ??= verbose ? Logger.verbose() : Logger.standard();

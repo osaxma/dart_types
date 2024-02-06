@@ -13,21 +13,36 @@ import 'package:dart_types/src/util.dart';
 
 import 'search.dart';
 
-class TypesCollection {
-  final List<DartType> allTypes;
+/// A Helper class for collecting all types related to different dart types.
+///
+/// See:
+/// - [TypesCollector.collectTypeInfoForInterfaceTypes] to collect types for interfaces.
+/// - [TypesCollector.collectTypeInfoForFunctionTypes] to build lattice for FunctionType.
+class TypesCollector {
+  /// If given,
   final List<DartType> selectedTypes;
+
+  /// All the types that were collected/generated for the given [selectedTypes] or libraries.
+  final List<DartType> allTypes;
+
+  /// Cached [typeSystem] that can be used for obtaining core types or determining if one type
+  /// is a subtype of another.
+  // NOTE: The element model of the analyzer package have a separate `TypeSystem` per`LibraryElement`.
+  //       Though, for our usage of getting coretypes or determining subtypes, any `typeSystem`
+  //       seem to work (within the same project).
   final TypeSystem typeSystem;
 
-  TypesCollection._({
+  TypesCollector._({
     required this.allTypes,
     required this.selectedTypes,
     required this.typeSystem,
   });
 
-  static Future<TypesCollection> collectTypeInfoForInterfaceTypes({
+  static Future<TypesCollector> collectTypeInfoForInterfaceTypes({
     required String path,
     List<String> filters = const [],
     List<String> selectedTypes = const [],
+    bool sortedBySubTypes = true,
   }) async {
     final engine = await SimpleSearchEngine.create(path);
     final elements = <InterfaceElement>[];
@@ -68,6 +83,10 @@ class TypesCollection {
       throw TypeNotFoundException(buff.toString());
     }
 
+    if (elements.isEmpty) {
+      throw TypeNotFoundException('No types were found at the given path: $path');
+    }
+
     // hacky though works.
     final typeSystem = elements.first.library.typeSystem;
 
@@ -82,14 +101,22 @@ class TypesCollection {
 
     await engine.dispose();
 
-    return TypesCollection._(
-        allTypes: allTypes.toSet().toList(), selectedTypes: typesToHighlight, typeSystem: typeSystem);
+    if (sortedBySubTypes) {
+      sortTypes(allTypes, typeSystem);
+    }
+
+    return TypesCollector._(
+      allTypes: allTypes.toSet().toList(),
+      selectedTypes: typesToHighlight,
+      typeSystem: typeSystem,
+    );
   }
 
-  static Future<TypesCollection> collectTypeInfoForFunctionTypes({
+  static Future<TypesCollector> collectTypeInfoForFunctionTypes({
     required String path,
     required String functionName,
     List<String> filters = const [],
+    bool sortedBySubTypes = true,
   }) async {
     final engine = await SimpleSearchEngine.create(path);
 
@@ -113,7 +140,7 @@ class TypesCollection {
 
     if (functionType == null) {
       final buff = StringBuffer();
-      buff.writeln('could not find the FunctionType with name: $functionType');
+      buff.writeln('could not find the FunctionType with name: $functionName');
       buff.writeln('To view available types, run the following command:');
       buff.writeln('     dart_types list -p $path');
       throw TypeNotFoundException(buff.toString());
@@ -121,22 +148,39 @@ class TypesCollection {
 
     final allTypes = collectTypesFromFunctionType(functionType, element.library.typeProvider);
 
-    return TypesCollection._(
+    if (sortedBySubTypes) {
+      sortTypes(allTypes, element.library.typeSystem);
+    }
+
+    return TypesCollector._(
       allTypes: allTypes,
       selectedTypes: [functionType],
       typeSystem: element.library.typeSystem,
     );
   }
 
-  static void _filterElements(List<InterfaceElement> elements, List<String> filters) {
-    final patterns = filters.map((e) => RegExp(e));
-    elements.removeWhere((t) => patterns.any((regexp) => regexp.hasMatch(t.displayName)));
-  }
-
   static void _filterTypes(List<DartType> types, List<String> filters) {
     final patterns = filters.map((e) => RegExp(e));
     types.removeWhere((t) =>
         patterns.any((regexp) => regexp.hasMatch(t.getDisplayString(withNullability: true))));
+  }
+
+  static void sortTypes(List<DartType> types, TypeSystem typeSystem) {
+    types.sort((a, b) {
+      if (a == b) return 0;
+
+      if (typeSystem.isSubtypeOf(a, b)) {
+        return 1;
+      }
+
+      if (typeSystem.isSubtypeOf(b, a)) {
+        return -1;
+      }
+      // sort unrelated alphabetically if equal
+      return a
+          .getDisplayString(withNullability: true)
+          .compareTo(b.getDisplayString(withNullability: true));
+    });
   }
 
   static List<DartType> collectTypesFromFunctionType(FunctionType type, TypeProvider typeProvider) {

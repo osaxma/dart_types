@@ -9,9 +9,6 @@ import 'package:dart_types/src/util.dart';
 import 'package:path/path.dart' as p;
 import 'package:analyzer/dart/element/element.dart';
 
-// Note: This is slow and should only be used to search an entire project/workspace
-//       It's slow because we need to resolve the entire project
-//       Also, to use `Search.subTypes`, `AnalysisDriver`  needs to be indexed
 class SimpleSearchEngine {
   // We need to use the implementation so we can access drivers, search and
   // enable indexing (so we can search subtypes)
@@ -26,15 +23,16 @@ class SimpleSearchEngine {
 
   // Even though there's no real asynchronous work here, this is intentionally async.
   //
-  // `AnalysisDriver.addFile` does some implicit async operations. So if this wasn't async
-  // and all the code leading to a method (e.g. `findElement`) was synchronous, it's an issue.
-  // That is, the drivers wouldn't have completed all their asynchronous events.
-  // And the methods would not return any result even if they should.
+  // `AnalysisDriver.addFile` does some implicit async operations. So if this method wasn't async,
+  // and all the code leading to a search method (e.g. `getAllTypeDefiningElements`) was synchronous,
+  // we won't get any results from the methods.
   //
-  // So we add a delay at the end so all the drivers code in the event loop are processed first.
-  // (dear reader, trust me, that wasn't easy to uncover)
+  // To overcome this issue, we add an asynchronous event at the end of this method and wait for it
+  // to be completed. This way, we make sure all the other events in the event queue are processsed
+  // first (i.e. the drivers events of adding files).
   static Future<SimpleSearchEngine> create(String path) async {
     path = p.normalize(p.absolute(path));
+    throwIfPathIsNotValid(path);
     final collection = AnalysisContextCollectionImpl(
       includedPaths: [path],
       enableIndex: true,
@@ -46,37 +44,44 @@ class SimpleSearchEngine {
       }
     }
 
-    // artificial delay (see comment above) so this code is added at the end of the event queue
+    // Artificial delay (see comment above) so this code is added at the end of the event queue
     // to allow drivers events to be executed first.
     // TODO: find out if the drivers has a method that we can await for.
+    // (dear reader, trust me, that wasn't easy to uncover)
     await Future.delayed(Duration(microseconds: 1));
     return SimpleSearchEngine._(collection, path);
   }
 
-  Future<InterfaceElement?> findType(String pattern) async {
+  /* -------------------------------------------------------------------------- */
+  /*                                   QUERIES                                  */
+  /* -------------------------------------------------------------------------- */
+
+  Future<List<TypeDefiningElement>> getAllTypeDefiningElements() async {
+    final types = <TypeDefiningElement>[];
+    logger.trace('getAllTypeDefiningElements: start');
     for (var driver in drivers) {
-      var elements = await driver.search.topLevelElements(RegExp('^$pattern\$'));
-      // TODO: do a better job here especially if two types happened to have the same name
-      if (elements.isNotEmpty && elements.first is InterfaceElement) {
-        return elements.first as InterfaceElement;
-      }
+      final res = await driver.search.topLevelElements(RegExp('.*'));
+      types.addAll(
+        res
+            .whereType<TypeDefiningElement>()
+            // Filter types specific to the given path
+            // Note: if the path was `pkg/lib/A/`, then all folders in `pkg/lib/` are ignored
+            //       except folder `A`.
+            .where((element) =>
+                !element.isSynthetic &&
+                (path == element.source!.fullName || p.isWithin(path, element.source!.fullName))),
+      );
     }
-    return null;
+    logger.trace('getAllTypeDefiningElements: end (types length: ${types.length})');
+    return types;
   }
 
-  Future<Element?> findType2(String pattern) async {
-    for (var driver in drivers) {
-      var elements = await driver.search.topLevelElements(RegExp('^$pattern\$'));
-      // TODO: do a better job here especially if two types happened to have the same name
-      if (elements.isNotEmpty) {
-        return elements.first;
-      }
-    }
-    return null;
-  }
-
-  Future<List<InterfaceElement>> findSubtypes(InterfaceElement element,
-      {bool recursive = false, int depth = 10}) async {
+  Future<List<InterfaceElement>> findSubtypes(
+    InterfaceElement element, {
+    bool recursive = false,
+    // just a safeguard
+    int depth = 50,
+  }) async {
     final subtypes = <InterfaceElement>[];
     for (var driver in drivers) {
       final res = await driver.search.subTypes(element, SearchedFiles());
@@ -90,43 +95,6 @@ class SimpleSearchEngine {
       await Future.wait(futures).then((value) => subtypes.addAll(value.flattened));
     }
     return subtypes;
-  }
-
-  Future<List<InterfaceElement>> getAllTypes() async {
-    final types = <InterfaceElement>[];
-    logger.trace('getAllTypes: start');
-    for (var driver in drivers) {
-      final res = await driver.search.topLevelElements(RegExp('.*'));
-      types.addAll(
-        res
-            .whereType<InterfaceElement>()
-            // remove core libraries
-            // Note: if path was `Project/lib/A/`, then all other folders in lib except A are ignored
-            .where((element) => p.isWithin(path, element.source.fullName)),
-      );
-    }
-    logger.trace('getAllTypes: end (types length: ${types.length})');
-    return types;
-  }
-
-  Future<List<TypeDefiningElement>> getAllTypeDefiningElements() async {
-    final types = <TypeDefiningElement>[];
-    logger.trace('getAllTypeDefiningElements: start');
-    for (var driver in drivers) {
-      final res = await driver.search.topLevelElements(RegExp('.*'));
-      types.addAll(
-        res
-            .whereType<TypeDefiningElement>()
-
-            // remove core libraries
-            // Note: if path was `Project/lib/A/`, then all other folders in lib except A are ignored
-            .where((element) =>
-                !element.isSynthetic &&
-                (path == element.source!.fullName || p.isWithin(path, element.source!.fullName))),
-      );
-    }
-    logger.trace('getAllTypeDefiningElements: end (types length: ${types.length})');
-    return types;
   }
 
   Future<List<InterfaceElement>> findSubtypesForAll(

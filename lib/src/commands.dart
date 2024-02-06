@@ -1,10 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 
-import 'package:analyzer/dart/element/element.dart';
+import 'package:args/args.dart';
 import 'package:args/command_runner.dart';
 import 'package:dart_types/dart_types.dart';
+import 'package:dart_types/src/mermaid.dart';
 import 'package:dart_types/src/search.dart';
+import 'package:dart_types/src/util.dart';
 
 class Runner extends CommandRunner {
   Runner()
@@ -15,7 +17,21 @@ class Runner extends CommandRunner {
     addCommand(ListCommand());
     addCommand(MermaidCommand());
 
-    argParser.addMultiOption('filter');
+    argParser.addFlag(
+      'verbose',
+      abbr: 'v',
+      defaultsTo: false,
+      help: 'Verbose output',
+    );
+  }
+
+  @override
+  Future runCommand(ArgResults topLevelResults) {
+    if (topLevelResults['verbose']) {
+      verbose = true;
+    }
+
+    return super.runCommand(topLevelResults);
   }
 }
 
@@ -32,16 +48,23 @@ abstract class BaseCommand extends Command {
       abbr: 'f',
       help: 'filter types using a pattern (can be multiple)',
     );
+
+    argParser.addFlag(
+      'ignore-privates',
+      abbr: 'x',
+      help: 'Ignore all private types',
+    );
+
     argParser.addSeparator('');
   }
 
   String get path => argResults!['path'];
 
-  List<RegExp> get filters =>
-      (argResults!['filter'] as List<String>).map((e) => RegExp(e)).toList();
-
-  void filterTypes(List<InterfaceElement> types) {
-    types.removeWhere((t) => filters.any((regexp) => regexp.hasMatch(t.displayName)));
+  List<String> get filters {
+    return [
+      ...argResults!['filter'],
+      if (argResults!['ignore-privates']) '^_.*',
+    ];
   }
 
   bool isValidPath(String path) => throw UnimplementedError('TODO');
@@ -63,8 +86,9 @@ class ListCommand extends BaseCommand {
   FutureOr<void> run() async {
     final engine = await SimpleSearchEngine.create(path);
     try {
-      final types = await engine.getAllTypes();
-      filterTypes(types);
+      final types = await engine.getAllTypeDefiningElements();
+      final patterns = filters.map((f) => RegExp(f));
+      types.removeWhere((t) => patterns.any((p) => p.hasMatch(t.displayName)));
       for (var t in types) {
         print('- ${t.displayName}');
       }
@@ -84,7 +108,6 @@ class MermaidCommand extends BaseCommand {
       abbr: 't',
       help: 'scope the type hierarchy to specific type(s) (can be multiple)',
     );
-
     argParser.addFlag(
       'code',
       abbr: 'c',
@@ -121,6 +144,12 @@ class MermaidCommand extends BaseCommand {
       // valueHelp: 'TB|BT|RL|LR',
       allowed: ['TB', 'BT', 'RL', 'LR'],
     );
+
+    argParser.addFlag(
+      'function',
+      hide: !verbose,
+      help: 'Generate type lattice for a function type (typedef) -- only supports one type',
+    );
   }
 
   @override
@@ -130,8 +159,9 @@ class MermaidCommand extends BaseCommand {
   List<String> get aliases => ['m'];
 
   @override
-  String get description => 'Generate a mermaid graph';
+  String get description => 'Generate Mermaid Graph (code, editor url, viewer url, or image url)';
 
+  bool get isFunctionType => argResults!['function'];
   List<String> get selectedTypes => argResults!['type'];
   String get graphType => argResults!['graph-type'];
 
@@ -141,58 +171,84 @@ class MermaidCommand extends BaseCommand {
   bool get printImageUrl => argResults!['url-image'];
   bool get anyOutputOption => printGraph || printViewUrl || printEditUrl || printImageUrl;
 
-  @override
-  FutureOr<void> run() async {
+  void ensureOutputOptionIsProvidedOrExit() {
     if (!anyOutputOption) {
-      print('no output option was selected, pass one of the following flags to `mermaid` command:');
+      print(
+          'Exception: No output option was selected, pass one of the following flags to `mermaid` command:');
       print("""
 --code      or -c   to print the mermaid graph code.
 --url       or -u   to generate a url to mermaid.live graph viewer.
 --url-edit  or -e   to generate a url to mermaid.live graph editor',
 --url-image or -i   to generate a url to mermaid.ink graph image',
 """);
-    }
 
-    // final engine = await SimpleSearchEngine.create(path);
-    // final types = await engine.getAllTypes();
-
-    // final typesToHighlight = <DartType>[];
-    // if (selectedTypes.isNotEmpty) {
-    //   types.removeWhere((element) => !selectedTypes.contains(element.displayName));
-    //   typesToHighlight.addAll(types.map((e) => e.thisType));
-    // }
-
-    final TypeGraph typeGraph;
-    try {
-      typeGraph = await TypeGraph.generateForInterfaceTypes(
-        path: path,
-        selectedTypes: selectedTypes,
-      );
-    } catch (e) {
-      print(e);
       exit(42);
     }
+  }
 
-    final mermaidGraph = typeGraph.toMermaidGraph(graphType: graphType);
-
+  void printOutputGraph(MermaidGraph graph) {
     if (printGraph) {
-      print(mermaidGraph.code);
+      print('');
+      print(graph.code);
       print('');
     }
     if (printViewUrl) {
       print('');
-      print(mermaidGraph.viewUrl);
+      print(graph.viewUrl);
       print('');
     }
     if (printEditUrl) {
       print('');
-      print(mermaidGraph.editUrl);
+      print(graph.editUrl);
       print('');
     }
     if (printImageUrl) {
       print('');
-      print(mermaidGraph.imageUrl);
+      print(graph.imageUrl);
       print('');
     }
+  }
+
+  @override
+  FutureOr<void> run() async {
+    ensureOutputOptionIsProvidedOrExit();
+
+    final TypeGraph typeGraph;
+    try {
+      if (!isFunctionType) {
+        typeGraph = await TypeGraph.generateForInterfaceTypes(
+          path: path,
+          selectedTypes: selectedTypes,
+          filters: filters,
+        );
+      } else {
+        if (selectedTypes.isEmpty) {
+          print('Exception: For function types, one type must be selected');
+          exit(42);
+        }
+
+        if (selectedTypes.length > 1) {
+          print('Warning: More than one type was provided for function types');
+          print('         only ${selectedTypes.first} will be analyzed');
+        }
+
+        logger.trace(selectedTypes.first);
+
+        typeGraph = await TypeGraph.generateForFunctionType(
+          path: path,
+          functionName: selectedTypes.first,
+          filters: filters,
+        );
+      }
+    } catch (e, st) {
+      print(e);
+      if (verbose) {
+        print(st);
+      }
+      exit(42);
+    }
+
+    final mermaidGraph = typeGraph.toMermaidGraph(graphType: graphType);
+    printOutputGraph(mermaidGraph);
   }
 }
