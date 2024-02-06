@@ -20,7 +20,9 @@ class TypeGraph {
     TypeSystem typeSystem, [
     this.selectedTypes = const [],
   ]) {
+    logger.trace('TypeGraph - (transitiveReduction) start: (types length: ${types.length})');
     graph = transitiveReduction(types, (a, b) => typeSystem.isSubtypeOf(a.type, b.type));
+    logger.trace('TypeGraph - (transitiveReduction) end:   (graph length = ${graph.length})');
   }
 
   static Future<TypeGraph> generateForInterfaceTypes({
@@ -55,28 +57,6 @@ class TypeGraph {
     );
 
     return TypeGraph.fromTypes(collection.allTypes, collection.typeSystem);
-  }
-
-  // TODO: I think we should generate a transitive reduction from here directly
-  static Map<DartTypeWrapped, Set<DartTypeWrapped>> _createTypeMatrix(
-    List<DartTypeWrapped> types,
-    TypeSystem typeSystem,
-  ) {
-    logger.trace('_createTypeMatrix start (types length: ${types.length})');
-
-    final matrix = <DartTypeWrapped, Set<DartTypeWrapped> /* subtypes */ >{};
-
-    for (var t in types) {
-      final edges = types
-          .where((element) => element != t && typeSystem.isSubtypeOf(element.type, t.type))
-          .map((t) => DartTypeWrapped(type: t.type))
-          .toSet();
-      matrix[t] = edges;
-    }
-
-    logger.trace('_createTypeMatrix end: (matrix length = ${matrix.length})');
-
-    return matrix;
   }
 
   MermaidGraph toMermaidGraph({String? graphType}) {
