@@ -20,10 +20,10 @@ import 'search.dart';
 /// - [TypesCollector.collectTypeInfoForFunctionTypes] to build lattice for FunctionType.
 class TypesCollector {
   /// If given,
-  final List<DartType> selectedTypes;
+  final List<DartType2> selectedTypes;
 
   /// All the types that were collected/generated for the given [selectedTypes] or libraries.
-  final List<DartType> allTypes;
+  final List<DartType2> allTypes;
 
   /// Cached [typeSystem] that can be used for obtaining core types or determining if one type
   /// is a subtype of another.
@@ -106,8 +106,8 @@ class TypesCollector {
     }
 
     return TypesCollector._(
-      allTypes: allTypes.toSet().toList(),
-      selectedTypes: typesToHighlight,
+      allTypes: allTypes.toSet().map((t) => DartType2(type: t)).toList(),
+      selectedTypes: typesToHighlight.map((t) => DartType2(type: t)).toList(),
       typeSystem: typeSystem,
     );
   }
@@ -153,8 +153,8 @@ class TypesCollector {
     }
 
     return TypesCollector._(
-      allTypes: allTypes,
-      selectedTypes: [functionType],
+      allTypes: allTypes.map((t) => DartType2(type: t)).toList(),
+      selectedTypes: [DartType2(type: functionType)],
       typeSystem: element.library.typeSystem,
     );
   }

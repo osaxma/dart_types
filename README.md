@@ -62,7 +62,7 @@ Currently, the library only supports generating Mermaid graphs.
 > [!NOTE]
 >
 > For large projects such as Flutter, it's recommended to either specify a type or a small set of libraries, otherwise the graph will be enormous 
-> and will take forever to generate.
+> and will take a long time to generate.
 - Produces the code to the following mermaid graph:
 
     ```mermaid

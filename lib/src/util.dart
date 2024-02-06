@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:analyzer/dart/element/type.dart';
 import 'package:cli_util/cli_logging.dart';
 
 /// Generate all possible combination for elements in multiple lists.
@@ -77,3 +78,25 @@ void throwIfPathIsNotValid(String path) {
 bool verbose = false; // YOLO
 Logger? _logger;
 Logger get logger => _logger ??= verbose ? Logger.verbose() : Logger.standard();
+
+/// A wrapper around [DartType] mainly to override hashCode and equality
+///
+/// The [DartType.hashCode] seem to have a lot of collosions even for small libararies
+/// Making its usage in any Hashed Map or Set very slow.
+///
+// ^ I discovered this when generating the mermaid graph as there were many duplicate hash codes.
+class DartType2 {
+  final DartType type;
+  final String name;
+
+  DartType2({required this.type}) : name = type.getDisplayString(withNullability: false);
+
+  @override
+  int get hashCode => name.hashCode; // use the display name String as hashCode
+
+  @override
+  bool operator ==(Object other) {
+    if (other is! DartType2) return false;
+    return name == other.name && other.type == type;
+  }
+}

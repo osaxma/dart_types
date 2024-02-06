@@ -10,13 +10,13 @@ class TypeGraph {
   /// The [graph] is simply a Map consiting of:
   /// - Keys -> A [DartType] (i.e. node)
   /// - Values -> List of all known subtypes (i.e. edges)
-  late final Map<DartType /* type */, Set<DartType> /* subtypes */ > graph;
+  late final Map<DartType2 /* type */, Set<DartType2> /* subtypes */ > graph;
 
   /// The types to be highlighted in the graph.
-  final List<DartType> selectedTypes;
+  final List<DartType2> selectedTypes;
 
   TypeGraph.fromTypes(
-    List<DartType> types,
+    List<DartType2> types,
     TypeSystem typeSystem, [
     this.selectedTypes = const [],
   ]) {
@@ -60,19 +60,19 @@ class TypeGraph {
   }
 
   // TODO: I think we should generate a transitive reduction from here directly
-  static Map<DartType, List<DartType>> _createTypeMatrix(
-    List<DartType> types,
+  static Map<DartType2, Set<DartType2>> _createTypeMatrix(
+    List<DartType2> types,
     TypeSystem typeSystem,
   ) {
     logger.trace('_createTypeMatrix start (types length: ${types.length})');
 
-    final matrix = <DartType, List<DartType> /* subtypes */ >{};
+    final matrix = <DartType2, Set<DartType2> /* subtypes */ >{};
 
     for (var t in types) {
       final edges = types
-          .where((element) => element != t && typeSystem.isSubtypeOf(element, t))
-          .toSet()
-          .toList();
+          .where((element) => element != t && typeSystem.isSubtypeOf(element.type, t.type))
+          .map((t) => DartType2(type: t.type))
+          .toSet();
       matrix[t] = edges;
     }
 
@@ -89,10 +89,8 @@ class TypeGraph {
     //       Instead, use the display string hashcode.
     final graphAsStrings = <String, Set<String>>{};
     for (var entry in graph.entries) {
-      final newKey = entry.key.getDisplayString(withNullability: true).replaceAll(pattern, '');
-      final value = entry.value
-          .map((e) => e.getDisplayString(withNullability: true).replaceAll(pattern, ''))
-          .toSet();
+      final newKey = entry.key.name.replaceAll(pattern, '');
+      final value = entry.value.map((e) => e.name.replaceAll(pattern, '')).toSet();
       graphAsStrings.update(newKey, (v) => v..addAll(value), ifAbsent: () => value);
 
       // TODO: figure out why some node self reference themselves even though they should not
@@ -100,8 +98,7 @@ class TypeGraph {
       graphAsStrings[newKey]!.remove(newKey);
     }
 
-    final selectedTypesAsStrings =
-        selectedTypes.map((e) => e.getDisplayString(withNullability: true)).toList();
+    final selectedTypesAsStrings = selectedTypes.map((e) => e.name).toList();
 
     return MermaidGraph(
       graphAsStrings,

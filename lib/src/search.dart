@@ -100,7 +100,8 @@ class SimpleSearchEngine {
   Future<List<InterfaceElement>> findSubtypesForAll(
     List<InterfaceElement> types, {
     bool recursive = false,
-    int depth = 10,
+    // just a safeguard
+    int depth = 50,
   }) async {
     final subTypesFutures = <Future<List<InterfaceElement>>>[];
     logger.trace('findSubtypesForAll: start (types length: ${types.length})');

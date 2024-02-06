@@ -1,3 +1,7 @@
+## 0.0.5
+- Minor improvement in performance of large projects 
+    - still `transitiveReduction` takes the 95% of the time :/
+
 ## 0.0.4
 - Support generating URLs for mermaid.live (interactive viewer and editor)
 - Support generating URLs for mermaid.ink  (image viewer)
