@@ -1,3 +1,6 @@
+## 0.0.6
+- New `transitiveReduction` algorithm implementation that's significantly faster. 
+
 ## 0.0.5
 - Minor improvement in performance of large projects 
     - still `transitiveReduction` takes the 95% of the time :/

@@ -59,10 +59,6 @@ Currently, the library only supports generating Mermaid graphs.
     ```console
     dart_types mermaid --path /path/to/flutter/sdk/packages/flutter/lib --code -ignore-privates --type StatelessWidget
     ```
-> [!NOTE]
->
-> For large projects such as Flutter, it's recommended to either specify a type or a small set of libraries, otherwise the graph will be enormous 
-> and will take a long time to generate.
 - Produces the code to the following mermaid graph:
 
     ```mermaid
@@ -142,13 +138,12 @@ Currently, the library only supports generating Mermaid graphs.
 ### Known Limitation:
 
 - Generics are ignored in generated graphs (in terms of type hierarchy)
-- The transitive reduction algorithm is not accurrate and is not efficient.
-    - Extra edges, that could've been removed, would appear in the graph. 
-    - It's O(N<sup>3</sup>) where N is the number of types in the graph. 
 - Types from external libraries may not appear in the graph as super types in certain cases.
     - I assume that the analyzer will take advantage of cached analysis to provide super types from external libraries. If those external libraries are not available in the cache, they are ignored (this is unverified observation).
-
+- Note: mermaid.live website has a limit of 500 edges. 
 
 <!--  TODO: 
-I think it would be more useful if the nodes provided more information. For example, if clicking in the node shows the documentation of the type with a URI to where it's located. 
+- I think it would be more useful if the nodes provided more information. For example, if clicking in the node shows the documentation of the type with a URI to where it's located. 
+
+- Graphviz Implementation 
  -->

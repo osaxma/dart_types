@@ -1,6 +1,6 @@
 name: dart_types
 description: A utility cli and package to construct and present the type graph of Dart type(s).
-version: 0.0.5
+version: 0.0.6
 repository: https://github.com/osaxma/dart_types
 
 executables:
