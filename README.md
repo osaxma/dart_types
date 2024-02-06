@@ -59,8 +59,10 @@ Currently, the library only supports generating Mermaid graphs.
     ```console
     dart_types mermaid --path /path/to/flutter/sdk/packages/flutter/lib --code -ignore-privates --type StatelessWidget
     ```
-    > Note: For large packages such as Flutter, it's recommended to specify a type otherwise the graph will be enormous 
-    >       and may take forever to produce the graph, if ever. 
+> [!NOTE]
+>
+> For large projects such as Flutter, it's recommended to either specify a type or a small set of libraries, otherwise the graph will be enormous 
+> and will take forever to generate.
 - Produces the code to the following mermaid graph:
 
     ```mermaid
