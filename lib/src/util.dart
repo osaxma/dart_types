@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:typed_data';
 
 import 'package:analyzer/dart/element/type.dart';
 import 'package:cli_util/cli_logging.dart';
@@ -28,41 +29,66 @@ Iterable<List<T>> allCombinations<T>(List<List<T>> sources) sync* {
   }
 }
 
-/// Returns the [transitive reduction][] of [graph].
+/// Return the transitive reduction for a directed acyclic graph (DAG).
 ///
-/// [transitive reduction]: https://en.wikipedia.org/wiki/Transitive_reduction
+/// This function assumes the graph is acyclic and it doesn't check for that.
 ///
-/// Interprets [graph] as a directed graph with a vertex for each key and edges
-/// from each key to the values that the key maps to.
+/// [nodes] should be a list of all nodes in the graph.
 ///
-/// Assumes that every vertex in the graph has a key to represent it, even if
-/// that vertex has no outgoing edges. This isn't checked, but if it's not
-/// satisfied, the function may crash or provide unexpected output. For example,
-/// `{"a": ["b"]}` is not valid, but `{"a": ["b"], "b": []}` is.
-// note: this was copied from `package:collection` (transitiveClosure) and one line was modified for reduction
-//       i.e. delete edges instead of adding them
-// TODO: this isn't accurate (e.g. ` A -> B -> C -> D; A -> C; A-> D` won't remove A->D)
-Map<T, Set<T>> transitiveReduction<T>(Map<T, Iterable<T>> graph) {
-  logger.trace('transitiveReduction start (graph length: ${graph.length})');
-  var result = <T, Set<T>>{};
-  graph.forEach((vertex, edges) {
-    result[vertex] = Set<T>.from(edges.where((element) => element != vertex));
-  });
+/// [isReachable] should return true when two nodes are reachable (i.e. have a path between them).
+/// Note: this shouldn't return `true` when there's an edge only, but also when there's a path.
+///
+/// Credit: [jgrapht][] Implementation of Harry Hsu's algorithm for [Transitive Reduction][]
+///
+/// [Transitive Reduction]: https://en.wikipedia.org/wiki/Transitive_reductio
+/// [jgrapht]: https://github.com/jgrapht/jgrapht/blob/master/jgrapht-core/src/main/java/org/jgrapht/alg/TransitiveReduction.java
+Map<T, Set<T>> transitiveReduction<T>(List<T> nodes, bool Function(T, T) isReachable) {
+  final dimension = nodes.length;
 
-  // Lists are faster to iterate than maps, so we create a list since we're
-  // iterating repeatedly.
-  var keys = graph.keys.toList();
-  for (var vertex1 in keys) {
-    for (var vertex2 in keys) {
-      for (var vertex3 in keys) {
-        if (result[vertex1]!.contains(vertex2) && result[vertex2]!.contains(vertex3)) {
-          result[vertex1]!.remove(vertex3);
+  // TODO: check BoolList from `package:collection` if we need a space efficient storage.
+  final storage = Uint8List(dimension * dimension);
+
+  int index(int row, int col) => (row * dimension) + col;
+
+  // fill storage with reachability information
+  for (var i = 0; i < nodes.length; i++) {
+    for (var j = 0; j < nodes.length; j++) {
+      // don't create a path from a node to itself.
+      if (i == j) continue;
+      if (isReachable(nodes[j], nodes[i])) {
+        storage[index(i, j)] = 1;
+      }
+    }
+  }
+
+  // Reduce the graph
+  for (var i = 0; i < dimension; i++) {
+    for (var j = 0; j < dimension; j++) {
+      if (storage[index(i, j)] > 0) {
+        for (var k = 0; k < dimension; k++) {
+          if (storage[index(j, k)] > 0) {
+            storage[index(i, k)] = 0;
+          }
         }
       }
     }
   }
-  logger.trace('transitiveReduction end: (result length = ${result.length})');
-  return result;
+
+  // create reduced graph
+  final reducedGraph = <T, Set<T>>{};
+  for (var i = 0; i < dimension; i++) {
+    final rowIndex = index(i, 0);
+    final row = storage.sublist(rowIndex, rowIndex + dimension);
+    final set = <T>{};
+    for (var j = 0; j < row.length; j++) {
+      if (row[j] > 0) {
+        set.add(nodes[j]);
+      }
+    }
+    reducedGraph[nodes[i]] = set;
+  }
+
+  return reducedGraph;
 }
 
 /// Throws an Exception if [path] is not an existing [File] or [Directory].
@@ -82,21 +108,26 @@ Logger get logger => _logger ??= verbose ? Logger.verbose() : Logger.standard();
 /// A wrapper around [DartType] mainly to override hashCode and equality
 ///
 /// The [DartType.hashCode] seem to have a lot of collosions even for small libararies
-/// Making its usage in any Hashed Map or Set very slow.
-///
-// ^ I discovered this when generating the mermaid graph as there were many duplicate hash codes.
-class DartType2 {
+/// making its usage unreliable as a key to Hash Maps or Sets.
+// ^ I observed this when generating the mermaid graph as there were many duplicate hash codes.
+class DartTypeWrapped {
   final DartType type;
   final String name;
 
-  DartType2({required this.type}) : name = type.getDisplayString(withNullability: false);
+  DartTypeWrapped({required this.type}) : name = type.getDisplayString(withNullability: false);
 
   @override
-  int get hashCode => name.hashCode; // use the display name String as hashCode
+  int get hashCode => type.hashCode; // use the display name String as hashCode
 
   @override
   bool operator ==(Object other) {
-    if (other is! DartType2) return false;
-    return name == other.name && other.type == type;
+    if (other is! DartTypeWrapped) return false;
+    // return name == other.name && other.type == type;
+    return other.type == type;
+  }
+
+  @override
+  String toString() {
+    return name;
   }
 }

@@ -10,19 +10,17 @@ class TypeGraph {
   /// The [graph] is simply a Map consiting of:
   /// - Keys -> A [DartType] (i.e. node)
   /// - Values -> List of all known subtypes (i.e. edges)
-  late final Map<DartType2 /* type */, Set<DartType2> /* subtypes */ > graph;
+  late final Map<DartTypeWrapped /* type */, Set<DartTypeWrapped> /* subtypes */ > graph;
 
   /// The types to be highlighted in the graph.
-  final List<DartType2> selectedTypes;
+  final List<DartTypeWrapped> selectedTypes;
 
   TypeGraph.fromTypes(
-    List<DartType2> types,
+    List<DartTypeWrapped> types,
     TypeSystem typeSystem, [
     this.selectedTypes = const [],
   ]) {
-    final matrix = _createTypeMatrix(types, typeSystem);
-
-    graph = transitiveReduction(matrix);
+    graph = transitiveReduction(types, (a, b) => typeSystem.isSubtypeOf(a.type, b.type));
   }
 
   static Future<TypeGraph> generateForInterfaceTypes({
@@ -60,18 +58,18 @@ class TypeGraph {
   }
 
   // TODO: I think we should generate a transitive reduction from here directly
-  static Map<DartType2, Set<DartType2>> _createTypeMatrix(
-    List<DartType2> types,
+  static Map<DartTypeWrapped, Set<DartTypeWrapped>> _createTypeMatrix(
+    List<DartTypeWrapped> types,
     TypeSystem typeSystem,
   ) {
     logger.trace('_createTypeMatrix start (types length: ${types.length})');
 
-    final matrix = <DartType2, Set<DartType2> /* subtypes */ >{};
+    final matrix = <DartTypeWrapped, Set<DartTypeWrapped> /* subtypes */ >{};
 
     for (var t in types) {
       final edges = types
           .where((element) => element != t && typeSystem.isSubtypeOf(element.type, t.type))
-          .map((t) => DartType2(type: t.type))
+          .map((t) => DartTypeWrapped(type: t.type))
           .toSet();
       matrix[t] = edges;
     }
