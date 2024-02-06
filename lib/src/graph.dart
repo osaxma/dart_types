@@ -34,6 +34,7 @@ class TypeGraph {
       path: path,
       selectedTypes: selectedTypes,
       filters: filters, // privates
+      sortedBySubTypes: true,
     );
 
     return TypeGraph.fromTypes(
@@ -52,6 +53,7 @@ class TypeGraph {
       path: path,
       functionName: functionName,
       filters: filters,
+      sortedBySubTypes: true,
     );
 
     return TypeGraph.fromTypes(collection.allTypes, collection.typeSystem);
@@ -59,10 +61,13 @@ class TypeGraph {
 
   // TODO: I think we should generate a transitive reduction from here directly
   static Map<DartType, List<DartType>> _createTypeMatrix(
-      List<DartType> types, TypeSystem typeSystem) {
+    List<DartType> types,
+    TypeSystem typeSystem,
+  ) {
     logger.trace('_createTypeMatrix start (types length: ${types.length})');
+
     final matrix = <DartType, List<DartType> /* subtypes */ >{};
-    _sortTypes(types, typeSystem);
+
     for (var t in types) {
       final edges = types
           .where((element) => element != t && typeSystem.isSubtypeOf(element, t))
@@ -74,24 +79,6 @@ class TypeGraph {
     logger.trace('_createTypeMatrix end: (matrix length = ${matrix.length})');
 
     return matrix;
-  }
-
-  static void _sortTypes(List<DartType> types, TypeSystem typeSystem) {
-    types.sort((a, b) {
-      if (a == b) return 0;
-
-      if (typeSystem.isSubtypeOf(a, b)) {
-        return 1;
-      }
-
-      if (typeSystem.isSubtypeOf(b, a)) {
-        return -1;
-      }
-      // sort unrelated alphabetically if equal
-      return a
-          .getDisplayString(withNullability: true)
-          .compareTo(b.getDisplayString(withNullability: true));
-    });
   }
 
   MermaidGraph toMermaidGraph({String? graphType}) {
