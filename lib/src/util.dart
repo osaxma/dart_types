@@ -29,56 +29,59 @@ Iterable<List<T>> allCombinations<T>(List<List<T>> sources) sync* {
   }
 }
 
-/// Return the transitive reduction for a directed acyclic graph (DAG).
+/// Return the [Transitive Reduction] for a directed acyclic graph (DAG).
 ///
 /// This function assumes the graph is acyclic and it doesn't check for that.
 ///
 /// [nodes] should be a list of all nodes in the graph.
 ///
-/// [isReachable] should return true when two nodes are reachable (i.e. have a path between them).
-/// Note: this shouldn't return `true` when there's an edge only, but also when there's a path.
+/// [hasPath] should return `true` when the first argument has a path to the second argument.
+/// > Note: [hasPath] should return `true` when there is a **path**, not only an edge.
 ///
-/// Credit: [jgrapht][] Implementation of Harry Hsu's algorithm for [Transitive Reduction][]
+/// This function is a port of [jgrapht][] implementation of Harry Hsu's paper:
+/// "An Algorithm for Finding a Minimal Equivalent Graph of a Digraph" ([doi][])
 ///
 /// [Transitive Reduction]: https://en.wikipedia.org/wiki/Transitive_reductio
 /// [jgrapht]: https://github.com/jgrapht/jgrapht/blob/master/jgrapht-core/src/main/java/org/jgrapht/alg/TransitiveReduction.java
-Map<T, Set<T>> transitiveReduction<T>(List<T> nodes, bool Function(T, T) isReachable) {
-  final dimension = nodes.length;
+/// [doi]: https://doi.org/10.1145/321864.321866
+Map<T, Set<T>> transitiveReduction<T>(List<T> nodes, bool Function(T from, T to) hasPath) {
+  
+  final length = nodes.length; // square matrix (#row == #col == length)
+  final dimension = length * length;
+  final pathMatrix = Uint8List(dimension);
 
-  // TODO: check BoolList from `package:collection` if we need a space efficient storage.
-  final storage = Uint8List(dimension * dimension);
+  int index(int row, int col) => (row * length) + col;
 
-  int index(int row, int col) => (row * dimension) + col;
-
-  // fill storage with reachability information
-  for (var i = 0; i < nodes.length; i++) {
-    for (var j = 0; j < nodes.length; j++) {
+  // Create the path matrix
+  // "1" indicates a path and "0" indicates no path
+  for (var i = 0; i < length; i++) {
+    for (var j = 0; j < length; j++) {
       // don't create a path from a node to itself.
       if (i == j) continue;
-      if (isReachable(nodes[j], nodes[i])) {
-        storage[index(i, j)] = 1;
+      if (hasPath(nodes[i], nodes[j])) {
+        pathMatrix[index(i, j)] = 1;
       }
     }
   }
 
-  // Reduce the graph
-  for (var i = 0; i < dimension; i++) {
-    for (var j = 0; j < dimension; j++) {
-      if (storage[index(i, j)] > 0) {
-        for (var k = 0; k < dimension; k++) {
-          if (storage[index(j, k)] > 0) {
-            storage[index(i, k)] = 0;
+  // Reduce the graph in the path matrix
+  for (var i = 0; i < length; i++) {
+    for (var j = 0; j < length; j++) {
+      if (pathMatrix[index(i, j)] > 0) {
+        for (var k = 0; k < length; k++) {
+          if (pathMatrix[index(j, k)] > 0) {
+            pathMatrix[index(i, k)] = 0;
           }
         }
       }
     }
   }
 
-  // create reduced graph
+  // Create the reduced graph with the original nodes
   final reducedGraph = <T, Set<T>>{};
-  for (var i = 0; i < dimension; i++) {
+  for (var i = 0; i < length; i++) {
     final rowIndex = index(i, 0);
-    final row = storage.sublist(rowIndex, rowIndex + dimension);
+    final row = pathMatrix.sublist(rowIndex, rowIndex + length);
     final set = <T>{};
     for (var j = 0; j < row.length; j++) {
       if (row[j] > 0) {

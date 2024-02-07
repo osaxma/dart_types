@@ -21,7 +21,7 @@ class TypeGraph {
     this.selectedTypes = const [],
   ]) {
     logger.trace('TypeGraph - (transitiveReduction) start: (types length: ${types.length})');
-    graph = transitiveReduction(types, (a, b) => typeSystem.isSubtypeOf(a.type, b.type));
+    graph = transitiveReduction(types, (from, to) => typeSystem.isSubtypeOf(to.type, from.type));
     logger.trace('TypeGraph - (transitiveReduction) end:   (graph length = ${graph.length})');
   }
 
